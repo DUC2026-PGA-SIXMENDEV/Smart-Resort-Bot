@@ -1,0 +1,27 @@
+# --- Secrets & Credentials ---
+.env
+credentials.json
+
+# --- Database ---
+*.db
+resort_bot.db
+
+# --- Logs ---
+*.log
+bot.log
+
+# --- Python Environment ---
+__pycache__/
+*.pyc
+.venv/
+env/
+venv/
+.env/
+
+# --- Local Assets ---
+# Uncomment if you want to keep data/assets private
+# data/assets/
+
+# --- IDE Settings ---
+.vscode/
+.idea/
