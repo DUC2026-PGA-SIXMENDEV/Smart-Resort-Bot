@@ -88,6 +88,10 @@ def back_to_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     label = "🏠 ត្រឡប់ទៅម៉ឺនុយ" if lang == "KH" else "🏠 Back to Main Menu"
     return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data="menu_back")]])
 
+def start_again_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
+    label = "🔄 ចាប់ផ្តើមឡើងវិញ" if lang == "KH" else "🔄 Start Again"
+    return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data="menu_back")]])
+
 def booking_room_availability_keyboard(rooms_with_status: list, lang: str = "EN") -> InlineKeyboardMarkup:
     """Shows room list with availability tags in a 2x2 GRID (Mobile Optimized)."""
     buttons = []
@@ -134,7 +138,6 @@ def booking_edit_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     if lang == "KH":
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("👤 ឈ្មោះ", callback_data="edit_name"), InlineKeyboardButton("📞 ទូរស័ព្ទ", callback_data="edit_phone")],
-            [InlineKeyboardButton("📅 ថ្ងៃចូល/ចេញ", callback_data="edit_dates")],
             [InlineKeyboardButton("🛏️ ប្រភេទបន្ទប់", callback_data="edit_room"), InlineKeyboardButton("👥 ភ្ញៀវ", callback_data="edit_guests")],
             [InlineKeyboardButton("📝 សំណូមពរ", callback_data="edit_special")],
             [InlineKeyboardButton("🔙 ត្រឡប់ក្រោយ", callback_data="booking_back_to_summary")]
@@ -142,7 +145,6 @@ def booking_edit_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     else:
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("👤 Name", callback_data="edit_name"), InlineKeyboardButton("📞 Phone", callback_data="edit_phone")],
-            [InlineKeyboardButton("📅 Dates", callback_data="edit_dates")],
             [InlineKeyboardButton("🛏️ Room", callback_data="edit_room"), InlineKeyboardButton("👥 Guests", callback_data="edit_guests")],
             [InlineKeyboardButton("📝 Special", callback_data="edit_special")],
             [InlineKeyboardButton("🔙 Back to Summary", callback_data="booking_back_to_summary")]
