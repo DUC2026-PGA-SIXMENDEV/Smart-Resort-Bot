@@ -39,6 +39,8 @@ class BookingHandler:
         lang = user.get("language", "EN") if user else "EN"
         context.user_data["lang"] = lang 
         context.user_data["booking_data"] = {}
+        context.user_data["is_editing"] = False
+        context.user_data["is_check_only"] = False
 
         if query.data.startswith("booking_room_"):
             room_id = query.data.replace("booking_room_", "")
@@ -65,6 +67,7 @@ class BookingHandler:
         context.user_data["lang"] = lang 
         context.user_data["booking_data"] = {}
         context.user_data["is_check_only"] = True
+        context.user_data["is_editing"] = False
 
         msg = "📅 <b>សូមជ្រើសរើសថ្ងៃចូលស្នាក់នៅ:</b>" if lang == "KH" else "📅 <b>Please select your Check-in date:</b>"
         await query.message.reply_text(
@@ -83,6 +86,10 @@ class BookingHandler:
         name = update.message.text
         context.user_data["booking_data"]["booking_name"] = name
         
+        if context.user_data.get("is_editing"):
+            context.user_data["is_editing"] = False
+            return await self.show_summary(update, context)
+
         msg = "📞 <b>សូមបញ្ចូលលេខទូរស័ព្ទរបស់អ្នក:</b>" if lang == "KH" else "📞 <b>Please enter your phone number:</b>"
         await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
         return PHONE
@@ -92,6 +99,10 @@ class BookingHandler:
         phone = update.message.text
         context.user_data["booking_data"]["booking_phone"] = phone
         
+        if context.user_data.get("is_editing"):
+            context.user_data["is_editing"] = False
+            return await self.show_summary(update, context)
+
         msg = "📅 <b>សូមជ្រើសរើសថ្ងៃចូលស្នាក់នៅ:</b>" if lang == "KH" else "📅 <b>Please select your Check-in date:</b>"
         await update.message.reply_text(
             msg, 
@@ -160,11 +171,19 @@ class BookingHandler:
             inventory = await self.sheets.get_room_inventory()
             
             available_rooms = []
-            for r in rooms:
-                total = inventory.get(r["name"], 0)
-                occupied = await self.sheets.get_occupied_count(r["name"], ci_str, date_str)
+            for r in resort_data.get("rooms", []):
+                name = r["name"]
+                # Flexible name matching
+                total = inventory.get(name, 0)
+                if total == 0:
+                    # Try common spelling variations
+                    if "Bungalow" in name: total = inventory.get(name.replace("Bungalow", "Bungalov"), 0)
+                    if "Bungalov" in name: total = inventory.get(name.replace("Bungalov", "Bungalow"), 0)
+                
+                occupied = await self.sheets.get_occupied_count(name, ci_str, date_str)
                 remains = total - occupied
                 r_copy = r.copy()
+                r_copy["remains"] = remains
                 r_copy["availability_text"] = f"({remains} left)" if remains > 0 else "(❌ Sold Out)"
                 r_copy["is_available"] = remains > 0
                 available_rooms.append(r_copy)
@@ -213,6 +232,10 @@ class BookingHandler:
             context.user_data["booking_data"]["booking_room"] = f"{room['emoji']} {room['name']}"
             context.user_data["booking_data"]["price_per_night"] = room["price_per_night"]
 
+        if context.user_data.get("is_editing"):
+            context.user_data["is_editing"] = False # Proceed to full booking
+            return await self.show_summary(update, context)
+
         # If they came from "Check Availability", we now need their name/phone to continue
         if context.user_data.get("is_check_only"):
             context.user_data["is_check_only"] = False # Proceed to full booking
@@ -227,6 +250,11 @@ class BookingHandler:
     async def get_guests(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         lang = context.user_data.get("lang", "EN")
         context.user_data["booking_data"]["booking_guests"] = update.message.text
+
+        if context.user_data.get("is_editing"):
+            context.user_data["is_editing"] = False
+            return await self.show_summary(update, context)
+
         msg = "📝 <b>តើលោកអ្នកមានសំណូមពរពិសេសអ្វីខ្លះ?</b>" if lang == "KH" else "📝 <b>Any special requests?</b>"
         await update.message.reply_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_special_keyboard(lang))
         return SPECIAL
@@ -267,8 +295,72 @@ class BookingHandler:
             await query.edit_message_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_edit_menu_keyboard(lang))
             return CONFIRM
 
+        # --- Handle individual edits ---
+        context.user_data["is_editing"] = True
+
+        if data == "edit_name":
+            msg = "👤 <b>សូមបញ្ចូលឈ្មោះថ្មី:</b>" if lang == "KH" else "👤 <b>Please enter new name:</b>"
+            await query.edit_message_text(msg, parse_mode=ParseMode.HTML)
+            return NAME
+        
+        if data == "edit_phone":
+            msg = "📞 <b>សូមបញ្ចូលលេខទូរស័ព្ទថ្មី:</b>" if lang == "KH" else "📞 <b>Please enter new phone number:</b>"
+            await query.edit_message_text(msg, parse_mode=ParseMode.HTML)
+            return PHONE
+        
+        if data == "edit_dates":
+            msg = "📅 <b>សូមជ្រើសរើសថ្ងៃចូលស្នាក់នៅថ្មី:</b>" if lang == "KH" else "📅 <b>Please select new Check-in date:</b>"
+            await query.edit_message_text(msg, parse_mode=ParseMode.HTML, reply_markup=create_calendar(lang=lang))
+            return CHECKIN
+        
+        if data == "edit_room":
+            # Recalculate availability for current dates
+            ci_str = context.user_data["booking_data"]["booking_checkin"]
+            co_str = context.user_data["booking_data"]["booking_checkout"]
+            resort_data = context.bot_data.get("resort_data", {})
+            inventory = await self.sheets.get_room_inventory()
+            
+            available_rooms = []
+            for r in resort_data.get("rooms", []):
+                occupied = await self.sheets.get_occupied_count(r["name"], ci_str, co_str)
+                remains = inventory.get(r["name"], 0) - occupied
+                r_copy = r.copy()
+                r_copy["availability_text"] = f"({remains} left)" if remains > 0 else "(❌ Sold Out)"
+                r_copy["is_available"] = remains > 0
+                available_rooms.append(r_copy)
+
+            from bot.keyboards.menus import booking_room_availability_keyboard
+            msg = "🛏️ <b>សូមជ្រើសរើសប្រភេទបន្ទប់ថ្មី:</b>" if lang == "KH" else "🛏️ <b>Please select new room type:</b>"
+            await query.edit_message_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_room_availability_keyboard(available_rooms, lang))
+            return ROOM_TYPE
+
+        if data == "edit_guests":
+            msg = "👥 <b>តើមានភ្ញៀវប៉ុន្មាននាក់?</b>" if lang == "KH" else "👥 <b>How many guests in total?</b>"
+            await query.edit_message_text(msg, parse_mode=ParseMode.HTML)
+            return GUESTS
+        
+        if data == "edit_special":
+            from bot.keyboards.menus import booking_special_keyboard
+            msg = "📝 <b>តើលោកអ្នកមានសំណូមពរពិសេសអ្វីខ្លះ?</b>" if lang == "KH" else "📝 <b>Any special requests?</b>"
+            await query.edit_message_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_special_keyboard(lang))
+            return SPECIAL
+
+        if data == "booking_back_to_summary":
+            await query.edit_message_text(
+                self._get_summary_text(context.user_data["booking_data"], lang),
+                parse_mode=ParseMode.HTML,
+                reply_markup=booking_confirm_keyboard(lang)
+            )
+            return CONFIRM
+
         if data == "booking_confirm":
             booking_data = context.user_data["booking_data"]
+            username = update.effective_user.username
+            if username:
+                username = f"@{username}" if not username.startswith("@") else username
+            else:
+                username = "No Username"
+
             bid = await self.db.create_booking(
                 user_id=update.effective_user.id,
                 guest_name=booking_data["booking_name"],
@@ -282,7 +374,7 @@ class BookingHandler:
             try:
                 await self.sheets.append_booking([
                     bid, "PENDING", booking_data["booking_name"], booking_data["booking_phone"],
-                    update.effective_user.username or "N/A", booking_data["booking_checkin"],
+                    username, booking_data["booking_checkin"],
                     booking_data["booking_checkout"], booking_data["booking_room"],
                     booking_data["booking_guests"], booking_data.get("booking_special", "None"),
                     datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -294,6 +386,18 @@ class BookingHandler:
             success_msg = "🙏 <b>សូមអរគុណសម្រាប់ការកក់!</b>" if lang == "KH" else "🙏 <b>Thank you for your booking!</b>"
             await query.edit_message_text(success_msg, parse_mode=ParseMode.HTML, reply_markup=main_menu_keyboard(lang))
             return ConversationHandler.END
+
+    async def show_summary(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Helper to show summary and return CONFIRM state."""
+        lang = context.user_data.get("lang", "EN")
+        text = self._get_summary_text(context.user_data["booking_data"], lang)
+        from bot.keyboards.menus import booking_confirm_keyboard
+        
+        if update.callback_query:
+            await update.callback_query.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=booking_confirm_keyboard(lang))
+        else:
+            await update.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=booking_confirm_keyboard(lang))
+        return CONFIRM
 
     def _get_summary_text(self, data, lang):
         d1 = datetime.strptime(data["booking_checkin"], DATE_FORMAT)
@@ -318,11 +422,22 @@ class BookingHandler:
         return summary
 
     async def _notify_admins(self, bid, data, user, context):
-        d1 = datetime.strptime(data["booking_checkin"], DATE_FORMAT)
-        d2 = datetime.strptime(data["booking_checkout"], DATE_FORMAT)
-        nights = (d2 - d1).days
-        username_str = f"@{user.username}" if user.username else "No Username"
-        text = f"🔔 <b>NEW BOOKING ALERT! (# {bid})</b>\n👤 <b>Guest:</b> {data['booking_name']}\n📞 <b>Phone:</b> {data['booking_phone']}"
+        username = user.username
+        if username:
+            username = f"@{username}" if not username.startswith("@") else username
+            tg_link = f"<a href='https://t.me/{username.replace('@', '')}'>{username}</a>"
+        else:
+            tg_link = "No Username"
+            
+        text = (
+            f"🔔 <b>NEW BOOKING ALERT! (# {bid})</b>\n"
+            f"👤 <b>Guest:</b> {data['booking_name']}\n"
+            f"📞 <b>Phone:</b> {data['booking_phone']}\n"
+            f"🆔 <b>Telegram:</b> {tg_link}\n"
+            f"🛏️ <b>Room:</b> {data['booking_room']}\n"
+            f"📅 <b>Check-in:</b> {data['booking_checkin']}\n"
+            f"📅 <b>Check-out:</b> {data['booking_checkout']}"
+        )
         for aid in self.admin_ids:
             try: 
                 msg = await context.bot.send_message(chat_id=aid, text=text, parse_mode=ParseMode.HTML, reply_markup=admin_booking_action_keyboard(bid))

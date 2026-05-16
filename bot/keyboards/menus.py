@@ -89,26 +89,28 @@ def back_to_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data="menu_back")]])
 
 def booking_room_availability_keyboard(rooms_with_status: list, lang: str = "EN") -> InlineKeyboardMarkup:
-    """Shows room list with availability tags in a 2x2 GRID."""
+    """Shows room list with availability tags in a 2x2 GRID (Mobile Optimized)."""
     buttons = []
     row = []
     for r in rooms_with_status:
-        # Show exactly how many are left: e.g. "Superior Villa (5 left) ✅"
-        status_text = r.get("availability_text", "")
-        status_tag = "✅" if r.get("is_available") else "❌"
+        # Get just the first word of the name to keep it short
+        short_name = r['name'].split()[0]
+        count = r.get("remains", 0)
         
         if r.get("is_available"):
-            label = f"{r['emoji']} {r['name']} {status_text} {status_tag}"
+            # Result: "🏠 Superior [5]"
+            label = f"{r['emoji']} {short_name} [{count}]"
             row.append(InlineKeyboardButton(label, callback_data=f"room_{r['id']}"))
         else:
-            label = f"🚫 {r['name']} (Full)"
+            # Result: "🚫 Superior [0]"
+            label = f"🚫 {short_name} [0]"
             row.append(InlineKeyboardButton(label, callback_data="ignore"))
             
         if len(row) == 2:
             buttons.append(row)
             row = []
     
-    if row: buttons.append(row) # Catch leftover
+    if row: buttons.append(row)
     
     cancel_label = "❌ បោះបង់" if lang == "KH" else "❌ Cancel"
     buttons.append([InlineKeyboardButton(cancel_label, callback_data="booking_cancel")])

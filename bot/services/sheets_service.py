@@ -25,7 +25,8 @@ class SheetsService:
             if not self.credentials_path or not self.sheet_name: return False
             creds = Credentials.from_service_account_file(self.credentials_path, scopes=SCOPES)
             self.client = gspread.authorize(creds)
-            self.sheet = self.client.open(self.sheet_name).get_worksheet(0)
+            # Explicitly connect to 'Sheet1' for bookings
+            self.sheet = self.client.open(self.sheet_name).worksheet("Sheet1")
             
             headers = [
                 "Booking ID", "Status", "Guest Name", "Phone / WhatsApp", 
@@ -41,22 +42,46 @@ class SheetsService:
             return False
 
     async def get_room_inventory(self) -> dict:
-        """Fetches total room counts from the 'Rooms' tab."""
+        """Fetches total room counts from the 'Rooms' tab (Non-blocking)."""
         try:
             if not self.client: self._connect()
-            sheet = self.client.open(self.sheet_name).worksheet("Rooms")
-            records = sheet.get_all_records()
-            # Convert list of dicts to { 'Superior Villa': 5, ... }
-            return {r["Room Type"]: int(r["Total Inventory"]) for r in records}
+            
+            # Run blocking call in a separate thread to prevent lag for other users
+            def fetch_data():
+                sheet = self.client.open(self.sheet_name).worksheet("Rooms")
+                return sheet.get_all_values()
+            
+            rows = await asyncio.to_thread(fetch_data)
+            if not rows: return {}
+
+            # Parse headers and find column indices
+            headers = [str(h).strip() for h in rows[0]]
+            try:
+                name_idx = headers.index("Room Type")
+                total_idx = headers.index("Total Inventory")
+            except ValueError:
+                logger.error("❌ 'Room Type' or 'Total Inventory' column missing in 'Rooms' tab.")
+                return {}
+
+            inventory = {}
+            for row in rows[1:]: # Skip the header row
+                if len(row) > max(name_idx, total_idx):
+                    name = str(row[name_idx]).strip()
+                    total = str(row[total_idx]).strip()
+                    if name:
+                        try: inventory[name] = int(total)
+                        except: inventory[name] = 0
+            
+            return inventory
         except Exception as e:
             logger.error(f"Error fetching room inventory: {e}")
             return {}
 
     async def get_occupied_count(self, room_name: str, checkin: str, checkout: str) -> int:
-        """Calculates how many rooms of this type are booked during these dates in the sheet."""
+        """Calculates how many rooms are booked (Non-blocking)."""
         try:
             if not self.sheet: self._connect()
-            records = self.sheet.get_all_records()
+            records = await asyncio.to_thread(self.sheet.get_all_records)
             
             fmt = "%d/%m/%Y"
             q_in = datetime.strptime(checkin, fmt).date()
@@ -66,38 +91,42 @@ class SheetsService:
             for r in records:
                 if r.get("Status") not in ["CONFIRMED", "PAID"]:
                     continue
-                # The room name in sheet might include emojis, we strip them or match partially
                 r_room = r.get("Room Type", "")
                 if room_name not in r_room:
                     continue
                     
-                r_in = datetime.strptime(r["Check-in"], fmt).date()
-                r_out = datetime.strptime(r["Check-out"], fmt).date()
-                
-                # Overlap logic
-                if (q_in < r_out) and (q_out > r_in):
-                    occupied += 1
+                try:
+                    r_in = datetime.strptime(r["Check-in"], fmt).date()
+                    r_out = datetime.strptime(r["Check-out"], fmt).date()
+                    if (q_in < r_out) and (q_out > r_in):
+                        occupied += 1
+                except: continue
             return occupied
         except Exception as e:
             logger.error(f"Error calculating occupancy: {e}")
             return 0
 
     async def append_booking(self, b: list):
-        """b is a list matching the headers: [ID, Status, Name, Phone, User, In, Out, Room, Guests, Special, Time]"""
+        """Appends a booking row (Non-blocking)."""
         try:
             if not self.sheet:
                 if not self._connect(): return
-            self.sheet.append_row(b)
+            await asyncio.to_thread(self.sheet.append_row, b)
             logger.info("✅ Booking #%s synced to Sheets.", b[0])
         except Exception as e:
             logger.error("❌ Sync failed: %s", e)
 
     async def update_booking_status(self, booking_id: int, new_status: str):
+        """Updates status (Non-blocking)."""
         try:
             if not self.sheet:
                 if not self._connect(): return
-            cell = self.sheet.find(str(booking_id), in_column=1)
-            if cell:
-                self.sheet.update_cell(cell.row, 2, new_status)
+            
+            def do_update():
+                cell = self.sheet.find(str(booking_id), in_column=1)
+                if cell:
+                    self.sheet.update_cell(cell.row, 2, new_status)
+            
+            await asyncio.to_thread(do_update)
         except Exception as e:
             logger.error("❌ Status update failed: %s", e)
