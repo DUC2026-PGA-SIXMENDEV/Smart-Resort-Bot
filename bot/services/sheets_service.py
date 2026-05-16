@@ -2,7 +2,9 @@
 #  bot/services/sheets_service.py — Google Sheets Integration
 # ============================================================
 import logging
+import asyncio
 import gspread
+import asyncio
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
@@ -31,7 +33,7 @@ class SheetsService:
             headers = [
                 "Booking ID", "Status", "Guest Name", "Phone / WhatsApp", 
                 "Telegram Username", "Check-in", "Check-out", "Room Type", 
-                "Guests", "Special Requests", "Timestamp"
+                "Guests", "Special Requests", "Room ID", "Timestamp"
             ]
             
             if not self.sheet.row_values(1):
@@ -40,6 +42,28 @@ class SheetsService:
         except Exception as e:
             logger.error("❌ Sheets Error: %s", e)
             return False
+
+    async def get_all_occupied_dates(self) -> dict:
+        """Returns a dict mapping room names to lists of occupied date ranges."""
+        try:
+            if not self.sheet: self._connect()
+            records = await asyncio.to_thread(self.sheet.get_all_records)
+            
+            occupied_map = {}
+            for r in records:
+                if r.get("Status") not in ["CONFIRMED", "PAID"]:
+                    continue
+                room = r.get("Room Type", "Unknown")
+                checkin = r.get("Check-in")
+                checkout = r.get("Check-out")
+                if room and checkin and checkout:
+                    if room not in occupied_map:
+                        occupied_map[room] = []
+                    occupied_map[room].append(f"{checkin} to {checkout}")
+            return occupied_map
+        except Exception as e:
+            logger.error(f"Error fetching all occupied dates: {e}")
+            return {}
 
     async def get_room_inventory(self) -> dict:
         """Fetches total room counts from the 'Rooms' tab (Non-blocking)."""
