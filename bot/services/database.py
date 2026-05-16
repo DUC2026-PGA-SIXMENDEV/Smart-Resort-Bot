@@ -75,6 +75,11 @@ class Database:
                     comment     TEXT,
                     created_at  TEXT
                 );
+                CREATE TABLE IF NOT EXISTS admin_notifications (
+                    booking_id INTEGER,
+                    admin_id   INTEGER,
+                    message_id INTEGER
+                );
             """)
             await db.commit()
         logger.info("✅ Database initialized at '%s'", self.db_path)
@@ -137,7 +142,21 @@ class Database:
                 VALUES (?, ?, ?, ?)
             """, (user_id, role, message, now_kh()))
             await db.commit()
+    # --- Admin Notification Sync ---
+    async def add_admin_notification(self, bid: int, aid: int, mid: int):
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("INSERT INTO admin_notifications (booking_id, admin_id, message_id) VALUES (?, ?, ?)", (bid, aid, mid))
+            await db.commit()
 
+    async def get_admin_notifications(self, bid: int):
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("SELECT admin_id, message_id FROM admin_notifications WHERE booking_id = ?", (bid,)) as cursor:
+                return await cursor.fetchall()
+
+    async def clear_admin_notifications(self, bid: int):
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("DELETE FROM admin_notifications WHERE booking_id = ?", (bid,))
+            await db.commit()
     async def get_conversation_history(self, user_id: int, limit: int = 10) -> list[dict]:
         """Returns last N messages for a user (for AI context)."""
         async with aiosqlite.connect(self.db_path) as db:

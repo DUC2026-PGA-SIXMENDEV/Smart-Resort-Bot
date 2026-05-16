@@ -27,47 +27,68 @@ class SheetsService:
             self.client = gspread.authorize(creds)
             self.sheet = self.client.open(self.sheet_name).get_worksheet(0)
             
-            # Professional Headers: No User ID, added Phone and Telegram Username
             headers = [
                 "Booking ID", "Status", "Guest Name", "Phone / WhatsApp", 
                 "Telegram Username", "Check-in", "Check-out", "Room Type", 
                 "Guests", "Special Requests", "Timestamp"
             ]
             
-            # If sheet is empty, add headers
             if not self.sheet.row_values(1):
                 self.sheet.insert_row(headers, 1)
-            else:
-                # If headers are different, update them to match the new structure
-                current_headers = self.sheet.row_values(1)
-                if "Phone / WhatsApp" not in current_headers:
-                    self.sheet.update("A1:K1", [headers])
-                
             return True
         except Exception as e:
             logger.error("❌ Sheets Error: %s", e)
             return False
 
-    async def append_booking(self, b: dict):
+    async def get_room_inventory(self) -> dict:
+        """Fetches total room counts from the 'Rooms' tab."""
+        try:
+            if not self.client: self._connect()
+            sheet = self.client.open(self.sheet_name).worksheet("Rooms")
+            records = sheet.get_all_records()
+            # Convert list of dicts to { 'Superior Villa': 5, ... }
+            return {r["Room Type"]: int(r["Total Inventory"]) for r in records}
+        except Exception as e:
+            logger.error(f"Error fetching room inventory: {e}")
+            return {}
+
+    async def get_occupied_count(self, room_name: str, checkin: str, checkout: str) -> int:
+        """Calculates how many rooms of this type are booked during these dates in the sheet."""
+        try:
+            if not self.sheet: self._connect()
+            records = self.sheet.get_all_records()
+            
+            fmt = "%d/%m/%Y"
+            q_in = datetime.strptime(checkin, fmt).date()
+            q_out = datetime.strptime(checkout, fmt).date()
+            
+            occupied = 0
+            for r in records:
+                if r.get("Status") not in ["CONFIRMED", "PAID"]:
+                    continue
+                # The room name in sheet might include emojis, we strip them or match partially
+                r_room = r.get("Room Type", "")
+                if room_name not in r_room:
+                    continue
+                    
+                r_in = datetime.strptime(r["Check-in"], fmt).date()
+                r_out = datetime.strptime(r["Check-out"], fmt).date()
+                
+                # Overlap logic
+                if (q_in < r_out) and (q_out > r_in):
+                    occupied += 1
+            return occupied
+        except Exception as e:
+            logger.error(f"Error calculating occupancy: {e}")
+            return 0
+
+    async def append_booking(self, b: list):
+        """b is a list matching the headers: [ID, Status, Name, Phone, User, In, Out, Room, Guests, Special, Time]"""
         try:
             if not self.sheet:
                 if not self._connect(): return
-
-            row = [
-                b.get("id", "N/A"),
-                b.get("status", "PENDING"),
-                b.get("guest_name"),
-                b.get("phone", "N/A"),
-                b.get("username", "N/A"),
-                b.get("checkin_date"),
-                b.get("checkout_date"),
-                b.get("room_type"),
-                b.get("num_guests"),
-                b.get("special_request"),
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ]
-            self.sheet.append_row(row)
-            logger.info("✅ Booking #%s synced to Sheets.", b.get("id"))
+            self.sheet.append_row(b)
+            logger.info("✅ Booking #%s synced to Sheets.", b[0])
         except Exception as e:
             logger.error("❌ Sync failed: %s", e)
 

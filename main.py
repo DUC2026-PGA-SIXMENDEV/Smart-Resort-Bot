@@ -82,7 +82,10 @@ def build_application(config: Config) -> Application:
 
     # ── Booking Conversation Handler ─────────────────────────────────────────
     booking_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(booking_handler.start_booking, pattern=r"^booking_(start|room_.+)$")],
+        entry_points=[
+            CallbackQueryHandler(booking_handler.start_booking, pattern=r"^booking_(start|room_.+)$"),
+            CallbackQueryHandler(booking_handler.start_check_availability, pattern=r"^menu_availability$")
+        ],
         states={
             NAME:      [MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.get_name)],
             PHONE:     [MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.get_phone)],

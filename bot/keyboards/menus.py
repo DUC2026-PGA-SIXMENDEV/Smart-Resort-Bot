@@ -26,6 +26,7 @@ def main_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     if lang == "KH":
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("📋 កក់បន្ទប់ឥឡូវនេះ", callback_data="booking_start")],
+            [InlineKeyboardButton("📊 ពិនិត្យមើលបន្ទប់ទំនេរ", callback_data="menu_availability")],
             [InlineKeyboardButton("🛏️ ប្រភេទបន្ទប់",   callback_data="menu_rooms")],
             [InlineKeyboardButton("🏨 សេវាកម្មរីសត",   callback_data="menu_facilities")],
             [
@@ -41,6 +42,7 @@ def main_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     else:
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("📋 Book a Room Now", callback_data="booking_start")],
+            [InlineKeyboardButton("📊 Check Availability", callback_data="menu_availability")],
             [InlineKeyboardButton("🛏️ Our Rooms",      callback_data="menu_rooms")],
             [InlineKeyboardButton("🏨 Resort Facilities", callback_data="menu_facilities")],
             [
@@ -55,10 +57,16 @@ def main_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
         ])
 
 def rooms_menu_keyboard(rooms: list, lang: str = "EN") -> InlineKeyboardMarkup:
+    # 2x2 Grid for the Room Gallery
     buttons = []
-    for r in rooms:
-        label = f"{r['emoji']} {r['name']} - ${r['price_per_night']}"
-        buttons.append([InlineKeyboardButton(label, callback_data=f"room_detail_{r['id']}")])
+    row = []
+    for i, r in enumerate(rooms):
+        label = f"{r['emoji']} {r['name']}"
+        row.append(InlineKeyboardButton(label, callback_data=f"room_detail_{r['id']}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row: buttons.append(row)
     
     back_label = "🔙 ត្រឡប់ក្រោយ" if lang == "KH" else "🔙 Back to Menu"
     buttons.append([InlineKeyboardButton(back_label, callback_data="menu_back")])
@@ -80,10 +88,27 @@ def back_to_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     label = "🏠 ត្រឡប់ទៅម៉ឺនុយ" if lang == "KH" else "🏠 Back to Main Menu"
     return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data="menu_back")]])
 
-def booking_room_select_keyboard(rooms: list, lang: str = "EN") -> InlineKeyboardMarkup:
+def booking_room_availability_keyboard(rooms_with_status: list, lang: str = "EN") -> InlineKeyboardMarkup:
+    """Shows room list with availability tags in a 2x2 GRID."""
     buttons = []
-    for r in rooms:
-        buttons.append([InlineKeyboardButton(f"{r['emoji']} {r['name']}", callback_data=f"room_{r['id']}")])
+    row = []
+    for r in rooms_with_status:
+        # Show exactly how many are left: e.g. "Superior Villa (5 left) ✅"
+        status_text = r.get("availability_text", "")
+        status_tag = "✅" if r.get("is_available") else "❌"
+        
+        if r.get("is_available"):
+            label = f"{r['emoji']} {r['name']} {status_text} {status_tag}"
+            row.append(InlineKeyboardButton(label, callback_data=f"room_{r['id']}"))
+        else:
+            label = f"🚫 {r['name']} (Full)"
+            row.append(InlineKeyboardButton(label, callback_data="ignore"))
+            
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    
+    if row: buttons.append(row) # Catch leftover
     
     cancel_label = "❌ បោះបង់" if lang == "KH" else "❌ Cancel"
     buttons.append([InlineKeyboardButton(cancel_label, callback_data="booking_cancel")])
@@ -104,7 +129,6 @@ def booking_confirm_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
         ])
 
 def booking_edit_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
-    """Menu to choose which field to edit."""
     if lang == "KH":
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("👤 ឈ្មោះ", callback_data="edit_name"), InlineKeyboardButton("📞 ទូរស័ព្ទ", callback_data="edit_phone")],
@@ -123,7 +147,6 @@ def booking_edit_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
         ])
 
 def booking_special_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
-    """Special request options — no typing needed."""
     if lang == "KH":
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("🌹 ការតុបតែងបន្ទប់ (Decor)", callback_data="sp_decor")],

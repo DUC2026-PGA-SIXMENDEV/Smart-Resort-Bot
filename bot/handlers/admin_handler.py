@@ -258,15 +258,27 @@ class AdminHandler:
             return
 
         # Update DB and Sheet
-        await self.db.update_booking_status(booking_id, "CONFIRMED", "Confirmed by staff.")
+        admin_name = query.from_user.first_name
+        await self.db.update_booking_status(booking_id, "CONFIRMED", f"Confirmed by {admin_name}")
         await self.sheets.update_booking_status(booking_id, "CONFIRMED")
-        await query.edit_message_text(
-            f"✅ *Booking #{booking_id} CONFIRMED*\n\n"
-            f"Guest: {booking['guest_name']}\n"
-            f"Room: {booking['room_type']}\n"
-            f"Check-in: {booking['checkin_date']}",
-            parse_mode=ParseMode.HTML,
-        )
+        
+        # Sync all admin messages
+        notifs = await self.db.get_admin_notifications(booking_id)
+        for aid, mid in notifs:
+            try:
+                # We update the original message text for all admins
+                new_text = (
+                    f"✅ <b>Booking #{booking_id} CONFIRMED by {admin_name}</b>\n\n"
+                    f"Guest: {booking['guest_name']}\n"
+                    f"Room: {booking['room_type']}\n"
+                    f"Check-in: {booking['checkin_date']}"
+                )
+                await context.bot.edit_message_text(
+                    chat_id=aid, message_id=mid, text=new_text, parse_mode=ParseMode.HTML, reply_markup=None
+                )
+            except: pass
+            
+        await self.db.clear_admin_notifications(booking_id)
 
         # Notify guest
         try:
@@ -295,14 +307,25 @@ class AdminHandler:
             return
 
         # Update DB and Sheet
-        await self.db.update_booking_status(booking_id, "DECLINED", "Declined by staff.")
+        admin_name = query.from_user.first_name
+        await self.db.update_booking_status(booking_id, "DECLINED", f"Declined by {admin_name}")
         await self.sheets.update_booking_status(booking_id, "DECLINED")
-        await query.edit_message_text(
-            f"❌ *Booking #{booking_id} DECLINED*\n\n"
-            f"Guest: {booking['guest_name']}\n"
-            f"Room: {booking['room_type']}",
-            parse_mode=ParseMode.HTML,
-        )
+        
+        # Sync all admin messages
+        notifs = await self.db.get_admin_notifications(booking_id)
+        for aid, mid in notifs:
+            try:
+                new_text = (
+                    f"❌ <b>Booking #{booking_id} DECLINED by {admin_name}</b>\n\n"
+                    f"Guest: {booking['guest_name']}\n"
+                    f"Room: {booking['room_type']}"
+                )
+                await context.bot.edit_message_text(
+                    chat_id=aid, message_id=mid, text=new_text, parse_mode=ParseMode.HTML, reply_markup=None
+                )
+            except: pass
+            
+        await self.db.clear_admin_notifications(booking_id)
 
         # Notify guest
         try:

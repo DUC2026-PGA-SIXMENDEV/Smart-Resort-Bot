@@ -21,80 +21,69 @@
   },
   "rooms": [
     {
-      "id": "budget",
-      "name": "Budget Room",
-      "price_per_night": 15,
-      "capacity": 2,
-      "size_sqm": 25,
-      "bed_type": "គ្រែមួយ (Single Bed)",
-      "emoji": "🏠",
-      "description": "បន្ទប់តូចស្អាត សម្រាប់អ្នកធ្វើដំណើរម្នាក់ឯង ឬចង់សន្សំសំចៃ។",
-      "amenities": ["Wi-Fi ឥតគិតថ្លៃ", "កង្ហារ", "បន្ទប់ទឹកស្អាត"]
-    },
-    {
-      "id": "standard",
-      "name": "Standard Room",
-      "price_per_night": 20,
-      "capacity": 2,
-      "size_sqm": 35,
-      "bed_type": "គ្រែធំ (Double Bed)",
-      "emoji": "🛏️",
-      "description": "បន្ទប់មានផាសុកភាព ជាមួយម៉ាស៊ីនត្រជាក់ និងសម្ភារៈចាំបាច់។",
-      "amenities": ["Wi-Fi ឥតគិតថ្លៃ", "ម៉ាស៊ីនត្រជាក់", "ទូរទស្សន៍"]
-    },
-    {
-      "id": "deluxe",
-      "name": "Deluxe Room",
-      "price_per_night": 25,
+      "id": "superior",
+      "name": "Superior Villa",
+      "price_per_night": 45,
       "capacity": 2,
       "size_sqm": 45,
       "bed_type": "គ្រែធំ (King Size Bed)",
-      "emoji": "🌟",
-      "description": "បន្ទប់ធំទូលាយ ជាមួយគ្រឿងសង្ហារឹមទំនើប និងទេសភាពសួនច្បារ។",
+      "emoji": "🏠",
+      "description_kh": "វិឡាលំដាប់ខ្ពស់ ជាមួយទេសភាពសួនច្បារ និងគ្រឿងសង្ហារឹមទំនើប។",
+      "description_en": "Superior Villa with garden view and modern furnishings.",
       "amenities": ["Wi-Fi ល្បឿនលឿន", "ម៉ាស៊ីនត្រជាក់", "ទូរទស្សន៍ឆ្លាតវៃ"]
     },
     {
-      "id": "suite",
-      "name": "Luxury Suite",
-      "price_per_night": 30,
+      "id": "deluxe",
+      "name": "Deluxe Suite",
+      "price_per_night": 65,
       "capacity": 2,
       "size_sqm": 55,
       "bed_type": "គ្រែធំពិសេស (Premium King Bed)",
-      "emoji": "💎",
-      "description": "បន្ទប់ប្រណិតបំផុត ជាមួយយ៉រផ្ទាល់ខ្លួន និងសេវាកម្មពិសេស។",
+      "emoji": "🛁",
+      "description_kh": "បន្ទប់ប្រណិត ជាមួយអាងងូតទឹក និងយ៉រផ្ទាល់ខ្លួន។",
+      "description_en": "Deluxe Suite with private balcony and bathtub.",
       "amenities": ["Wi-Fi ល្បឿនលឿន", "ម៉ាស៊ីនត្រជាក់", "យ៉រផ្ទាល់ខ្លួន", "អាងងូតទឹក"]
-    }
-  ],
-  "facilities": [
-    {
-      "name": "អាងហែលទឹក",
-      "hours": "7:00 AM - 9:00 PM",
-      "emoji": "🏊",
-      "description": "អាងហែលទឹកធំទូលាយ ជាមួយទឹកថ្លាឈ្វេងសម្រាប់សម្រាកកាយ។"
     },
     {
-      "name": "ស្ប៉ា និងម៉ាស្សា",
-      "hours": "9:00 AM - 10:00 PM",
-      "emoji": "💆",
-      "description": "សេវាកម្មម៉ាស្សាបែបបុរាណខ្មែរ ដើម្បីបំបាត់ភាពនឿយហត់។"
-    }
-  ],
-  "packages": [
+      "id": "family",
+      "name": "Family Bungalow",
+      "price_per_night": 85,
+      "capacity": 4,
+      "size_sqm": 75,
+      "bed_type": "គ្រែធំ ២ (2 Double Beds)",
+      "emoji": "👨‍👩‍👧‍👦",
+      "description_kh": "បឹងកាឡូគ្រួសារ ធំទូលាយសម្រាប់មនុស្ស ៤ នាក់។",
+      "description_en": "Family Bungalow, spacious for 4 people.",
+      "amenities": ["Wi-Fi ល្បឿនលឿន", "ម៉ាស៊ីនត្រជាក់", "ទូរទស្សន៍ឆ្លាតវៃ", "ផ្ទះបាយតូច"]
+    },
     {
-      "name": "កញ្ចប់សម្រាកចុងសប្តាហ៍",
-      "price": "$50 / ២ យប់",
-      "includes": ["អាហារពេលព្រឹក", "ការបញ្ចុះតម្លៃលើស្ប៉ា", "ម៉ូតូជួល ១ ថ្ងៃ"]
+      "id": "executive",
+      "name": "Executive Suite",
+      "price_per_night": 120,
+      "capacity": 2,
+      "size_sqm": 85,
+      "bed_type": "គ្រែធំពិសេស (Super King Bed)",
+      "emoji": "🥂",
+      "description_kh": "បន្ទប់សម្រាប់នាយកប្រតិបត្តិ ជាមួយសេវាកម្មពិសេសបំផុត។",
+      "description_en": "Executive Suite with ultimate premium services.",
+      "amenities": ["Wi-Fi ល្បឿនលឿន", "ម៉ាស៊ីនត្រជាក់", "យ៉រផ្ទាល់ខ្លួន", "សេវាកម្មបន្ទប់ ២៤ ម៉ោង"]
     }
   ],
+  "facilities": {
+    "list_kh": ["អាងហែលទឹក (៧ព្រឹក - ៩យប់)", "ស្ប៉ា និងម៉ាស្សា", "ភោជនីយដ្ឋាន", "កន្លែងហាត់ប្រាណ"],
+    "list_en": ["Swimming Pool (7 AM - 9 PM)", "Spa & Massage", "Restaurant", "Fitness Center"]
+  },
+  "location": {
+    "address_kh": "ផ្លូវជាតិលេខ ៦, ក្រុងសៀមរាប, ប្រទេសកម្ពុជា",
+    "address_en": "National Road 6, Siem Reap, Cambodia"
+  },
+  "contact": {
+    "phone": "+855 12 345 678",
+    "email": "info@paradiseresort.com.kh",
+    "website": "www.paradiseresort.com.kh"
+  },
   "policies": {
-    "check_in": "១៤:០០ (អាចចូលមុនម៉ោងចាប់ពី ១១:០០ ដោយបង់បន្ថែម $១៥ អាស្រ័យលើបន្ទប់ទំនេរ)",
-    "check_out": "១២:០០ (អាចចាកចេញយឺតរហូតដល់ម៉ោង ១៥:០០ ដោយបង់បន្ថែម $១៥ អាស្រ័យលើបន្ទប់ទំនេរ)",
-    "cancellation": "បោះបង់ឥតគិតថ្លៃ ៤៨ ម៉ោងមុនពេលមកដល់។ បោះបង់ក្នុងកំឡុងពេល ៤៨ ម៉ោង នឹងត្រូវគិតថ្លៃបន្ទប់ ១ យប់។",
-    "children": "កុមារអាយុក្រោម ១២ ឆ្នាំ ស្នាក់នៅឥតគិតថ្លៃ (ប្រើប្រាស់គ្រែដែលមានស្រាប់)។ បន្ថែមគ្រែ តម្លៃ $២០/យប់។",
-    "pets": "មិនអនុញ្ញាតឱ្យនាំសត្វចិញ្ចឹមចូលក្នុងរីសតឡើយ។",
-    "smoking": "រីសតជាតំបន់មិនជក់បារី។ យើងមានកន្លែងសម្រាប់ជក់បារីនៅខាងក្រៅអាគារ។",
-    "payment": "យើងទទួលសាច់ប្រាក់ដុល្លារ (USD), Visa, MasterCard, UnionPay និង ABA Pay។ ប្រាក់រៀល (KHR) គិតតាមអត្រាប្តូរប្រាក់បច្ចុប្បន្ន។",
-    "deposit": "តម្រូវឱ្យមានប្រាក់កក់ចំនួន $១០០ នៅពេលចូលសម្រាក (Check-in)។",
-    "age": "ភ្ញៀវត្រូវមានអាយុចាប់ពី ១៨ ឆ្នាំឡើងទៅ ដើម្បីធ្វើការកក់បន្ទប់។ អនីតិជនត្រូវមានអាណាព្យព្យាបាលមកជាមួយ។"
+    "check_in": "១៤:០០ (2:00 PM)",
+    "check_out": "១២:០០ (12:00 PM)"
   }
 }
