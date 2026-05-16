@@ -24,8 +24,8 @@ class Config:
         self.GOOGLE_SHEETS_CREDS = os.getenv("GOOGLE_SHEETS_CREDS", "credentials.json")
         self.GOOGLE_SHEETS_NAME = os.getenv("GOOGLE_SHEETS_NAME", "Resort Bookings")
 
-    def _require(self, name: str) -> str:
-        value = os.getenv(name)
-        if not value:
-            raise EnvironmentError(f"❌ Required environment variable '{name}' is missing!")
-        return value
+    # def _require(self, name: str) -> str:
+    #     value = os.getenv(name)
+    #     if not value:
+    #         raise EnvironmentError(f"❌ Required environment variable '{name}' is missing!")
+    #     return value
