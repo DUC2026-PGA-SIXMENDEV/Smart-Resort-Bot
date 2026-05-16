@@ -8,7 +8,7 @@ from telegram.constants import ParseMode, ChatAction
 
 from bot.services.database import Database
 from bot.services.sheets_service import SheetsService
-from bot.keyboards.menus import admin_panel_keyboard, admin_booking_action_keyboard, main_menu_keyboard
+from bot.keyboards.menus import admin_panel_keyboard, admin_booking_action_keyboard, main_menu_keyboard, start_again_keyboard
 
 logger = logging.getLogger(__name__)
 
@@ -282,20 +282,33 @@ class AdminHandler:
 
         # Notify guest
         try:
-            await context.bot.send_message(
-                chat_id=booking["user_id"],
-                text=(
-                    f"🎉 *Your Booking is CONFIRMED! (#{booking_id})*\n\n"
+            user = await self.db.get_user(booking["user_id"])
+            lang = user.get("language", "EN") if user else "EN"
+            
+            if lang == "KH":
+                success_text = (
+                    "🎉 <b>ការកក់របស់អ្នកទទួលបានជោគជ័យ!</b>\n\n"
+                    "សូមអរគុណសម្រាប់ការគាំទ្រ Paradise Resort យើងទន្ទឹងរង់ចាំទទួលស្វាគមន៍អ្នក! 🌴\n\n"
+                    f"👤 ឈ្មោះ: {booking['guest_name']}\n"
+                    f"🛏️ បន្ទប់: {booking['room_type']}\n"
+                    f"📅 ថ្ងៃចូល: {booking['checkin_date']}\n"
+                    f"📅 ថ្ងៃចេញ: {booking['checkout_date']}"
+                )
+            else:
+                success_text = (
+                    "🎉 <b>Your Booking is Success!</b>\n\n"
+                    "Thank you for support Paradise Resort, We look forward to welcoming you! 🌴\n\n"
                     f"👤 Name: {booking['guest_name']}\n"
                     f"🛏️ Room: {booking['room_type']}\n"
                     f"📅 Check-in: {booking['checkin_date']}\n"
-                    f"📅 Check-out: {booking['checkout_date']}\n"
-                    f"👥 Guests: {booking['num_guests']}\n\n"
-                    "We look forward to welcoming you! 🌴\n\n"
-                    "📞 For any changes: +855 12 345 678"
-                ),
+                    f"📅 Check-out: {booking['checkout_date']}"
+                )
+
+            await context.bot.send_message(
+                chat_id=booking["user_id"],
+                text=success_text,
                 parse_mode=ParseMode.HTML,
-                reply_markup=main_menu_keyboard(),
+                reply_markup=start_again_keyboard(lang),
             )
         except Exception as e:
             logger.error("Failed to notify guest %s: %s", booking["user_id"], e)

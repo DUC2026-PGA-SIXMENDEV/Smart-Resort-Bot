@@ -29,7 +29,7 @@ from bot.handlers.start_handler import StartHandler
 from bot.handlers.customer_handler import CustomerHandler
 from bot.handlers.booking_handler import (
     BookingHandler,
-    NAME, PHONE, CHECKIN, CHECKOUT, ROOM_TYPE, GUESTS, SPECIAL, CONFIRM,
+    NAME, PHONE, CHECKIN, CHECKOUT, ROOM_TYPE, GUESTS, SPECIAL, CONFIRM, ROOM_ID_INPUT,
 )
 from bot.handlers.admin_handler import AdminHandler
 
@@ -95,6 +95,10 @@ def build_application(config: Config) -> Application:
             GUESTS:    [MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.get_guests)],
             SPECIAL:   [CallbackQueryHandler(booking_handler.get_special, pattern=r"^sp_")],
             CONFIRM:   [CallbackQueryHandler(booking_handler.confirm_booking, pattern=r"^(booking_|edit_)")],
+            ROOM_ID_INPUT: [
+                CallbackQueryHandler(booking_handler.handle_room_id_callback, pattern=r"^input_room_id$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.get_room_id)
+            ],
         },
         fallbacks=[CommandHandler("cancel", booking_handler.cancel), CommandHandler("start", booking_handler.cancel)],
         allow_reentry=True,
