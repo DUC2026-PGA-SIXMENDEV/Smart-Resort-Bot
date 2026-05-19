@@ -1,8 +1,6 @@
 # 🏨 Paradise Resort Telegram Bot
 
-> **Professional AI-powered Resort Customer Service & Booking System**
-
-A production-grade Telegram bot built for resort/hotel businesses. Handles customer Q&A with Google Gemini AI, multi-step room bookings, staff admin panel, and multi-language support (English & Khmer).
+A production-grade Telegram bot built for resort/hotel businesses. Handles customer  multi-step room bookings, staff admin panel, and​ two language support (English & Khmer).
 
 ---
 
@@ -10,7 +8,6 @@ A production-grade Telegram bot built for resort/hotel businesses. Handles custo
 
 | Feature | Description |
 |---|---|
-| 🤖 AI Assistant | Google Gemini-powered Q&A with full resort knowledge |
 | 📋 Smart Booking | 6-step guided booking form with date validation |
 | 👨‍💼 Admin Panel | Staff can confirm/decline bookings, view stats, broadcast |
 | 🔔 Notifications | Instant admin alerts + guest confirmation messages |
@@ -28,25 +25,21 @@ A production-grade Telegram bot built for resort/hotel businesses. Handles custo
 2. Send `/newbot` and follow instructions
 3. Copy your **Bot Token**
 
-### Step 2 — Get Gemini API Key (Free)
-1. Go to [https://aistudio.google.com/](https://aistudio.google.com/)
-2. Click **"Get API Key"** → Create new key
-3. Copy your **API Key**
 
-### Step 3 — Find Your Admin User ID
+
+### Step 2 — Find Your Admin User ID
 1. Message **@userinfobot** on Telegram
 2. Copy your **User ID** (a number like `123456789`)
 
-### Step 4 — Configure `.env`
+### Step 3 — Configure `.env`
 Edit the `.env` file in this folder:
 
 ```
 TELEGRAM_BOT_TOKEN=your_token_from_botfather
-GEMINI_API_KEY=your_gemini_api_key
 ADMIN_IDS=your_telegram_user_id
 ```
 
-### Step 5 — Run the Bot
+### Step 4 — Run the Bot
 ```bash
 python main.py
 ```
@@ -69,11 +62,10 @@ Booking_bot/
 └── bot/
     ├── handlers/
     │   ├── start_handler.py   # 👋 /start & /help commands
-    │   ├── customer_handler.py# 💬 AI Q&A & menu navigation
+    │   ├── customer_handler.py# 💬 menu navigation
     │   ├── booking_handler.py # 📋 6-step booking flow
     │   └── admin_handler.py   # 👨‍💼 Staff admin panel
     ├── services/
-    │   ├── ai_service.py      # 🤖 Google Gemini integration
     │   └── database.py        # 💾 SQLite async database
     └── keyboards/
         └── menus.py           # ⌨️  All Telegram inline keyboards
@@ -89,9 +81,6 @@ Edit **`data/resort_data.json`** to update:
 - Facilities and operating hours
 - Special packages and deals
 - Policies (check-in, cancellation, etc.)
-- FAQ answers
-
-The AI will automatically learn from this data — **no code changes needed!**
 
 ---
 
@@ -122,7 +111,6 @@ The AI will automatically learn from this data — **no code changes needed!**
 ```
 Customer → /start
     → Main Menu
-        ├── 🤖 Ask AI → Types question → AI answers
         ├── 🛏️ Rooms → Select room → See details → Book
         ├── 🏊 Facilities → View all facilities
         ├── 📋 Book Room → 6-step booking form
@@ -149,9 +137,7 @@ Admin ← 🔔 New booking notification
 ## 🛠️ Requirements
 
 - Python 3.10+
-- Telegram Bot Token (free from @BotFather)
-- Google Gemini API Key (free tier available)
+- Telegram Bot Token 
 
 ---
 
-*Built with ❤️ for resort hospitality businesses*
