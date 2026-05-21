@@ -12,7 +12,8 @@ from bot.keyboards.menus import (
     rooms_menu_keyboard,
     room_detail_keyboard,
     back_to_menu_keyboard,
-    main_menu_keyboard
+    main_menu_keyboard,
+    language_keyboard
 )
 
 logger = logging.getLogger(__name__)
@@ -36,18 +37,7 @@ class CustomerHandler:
         resort_data = context.bot_data.get("resort_data", {})
 
         # --- Menu Navigation ---
-        if data == "menu_availability":
-            text = "📅 <b>សូមជ្រើសរើសថ្ងៃចូលស្នាក់នៅ:</b>" if lang == "KH" else "📅 <b>Please select your Check-in date:</b>"
-            # We initialize a "Check Only" session in user_data
-            context.user_data["is_check_only"] = True
-            context.user_data["booking_data"] = {}
-            await query.edit_message_text(
-                text, 
-                parse_mode=ParseMode.HTML, 
-                reply_markup=create_calendar(lang=lang)
-            )
-
-        elif data == "menu_rooms":
+        if data == "menu_rooms":
             text = "🛏️ <b>ប្រភេទបន្ទប់របស់យើង:</b>" if lang == "KH" else "🛏️ <b>Our Room Types:</b>"
             await query.edit_message_text(
                 text, 
@@ -118,8 +108,86 @@ class CustomerHandler:
             )
             await query.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=main_menu_keyboard(lang))
 
+        elif data == "menu_language":
+            text = (
+                "🌐 <b>សូមជ្រើសរើសភាសារបស់អ្នក:</b>\n\n"
+                "Please choose your language:"
+            )
+            await query.edit_message_text(
+                text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=language_keyboard()
+            )
+
+        elif data.startswith("lang_"):
+            new_lang = data.replace("lang_", "")
+            await self.db.set_user_language(user_id, new_lang)
+            resort_name = resort_data.get("resort", {}).get("name", "Resort")
+            text = (
+                f"✅ <b>ភាសាខ្មែរត្រូវបានកំណត់!</b>\n\n"
+                f"រីករាយដែលបានជួបអ្នក! នេះគឺជាម៉ឺនុយមេសម្រាប់ {resort_name}។ "
+                "តើមានអ្វីដែលខ្ញុំអាចជួយអ្នកបាននៅថ្ងៃនេះ?"
+            ) if new_lang == "KH" else (
+                f"✅ <b>English Language Set!</b>\n\n"
+                f"Nice to meet you! This is the main menu for {resort_name}. "
+                "How can I assist you today?"
+            )
+            await query.edit_message_text(
+                text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=main_menu_keyboard(new_lang)
+            )
+
+        elif data == "menu_mybookings":
+            bookings = await self.db.get_user_bookings(user_id)
+            if not bookings:
+                text = (
+                    "📋 <b>អ្នក​មិនមានការកក់ណាមួយនៅឡើយទេ</b>\n\n"
+                    "សូមចុចប៊ូតុងខាងក្រោមដើម្បីចាប់ផ្តើមកក់បន្ទប់។"
+                ) if lang == "KH" else (
+                    "📋 <b>You have no bookings yet</b>\n\n"
+                    "Click the button below to start booking a room."
+                )
+            else:
+                header = "📋 <b>ការកក់របស់ខ្ញុំ:</b>\n\n" if lang == "KH" else "📋 <b>My Bookings:</b>\n\n"
+                text = header
+                for i, b in enumerate(bookings, 1):
+                    status_text = b.get("status", "PENDING")
+                    if lang == "KH":
+                        status_display = "✅ បានបញ្ជាក់" if status_text == "CONFIRMED" else \
+                                       "✅ បានបង់ប្រាក់" if status_text == "PAID" else \
+                                       "⏳ រង់ចាំ" if status_text == "PENDING" else status_text
+                    else:
+                        status_display = "✅ Confirmed" if status_text == "CONFIRMED" else \
+                                       "✅ Paid" if status_text == "PAID" else \
+                                       "⏳ Pending" if status_text == "PENDING" else status_text
+                    
+                    if lang == "KH":
+                        text += (
+                            f"<b>ការកក់ #{i}</b>\n"
+                            f"ឈ្មោះ: {b.get('guest_name', 'N/A')}\n"
+                            f"បន្ទប់: {b.get('room_type', 'N/A')}\n"
+                            f"ចូល: {b.get('checkin_date', 'N/A')}\n"
+                            f"ចេញ: {b.get('checkout_date', 'N/A')}\n"
+                            f"ស្ថានភាព: {status_display}\n\n"
+                        )
+                    else:
+                        text += (
+                            f"<b>Booking #{i}</b>\n"
+                            f"Name: {b.get('guest_name', 'N/A')}\n"
+                            f"Room: {b.get('room_type', 'N/A')}\n"
+                            f"Check-in: {b.get('checkin_date', 'N/A')}\n"
+                            f"Check-out: {b.get('checkout_date', 'N/A')}\n"
+                            f"Status: {status_display}\n\n"
+                        )
+            
+            await query.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=back_to_menu_keyboard(lang))
+
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle random text messages by showing main menu."""
-        lang = await self._get_lang(update.effective_user.id)
-        text = "🙏 សូមជ្រើសរើសជម្រើសខាងក្រោម:" if lang == "KH" else "🙏 Please choose an option from the menu below:"
-        await update.message.reply_text(text, reply_markup=main_menu_keyboard(lang))
+        """Handle random text messages by silently deleting them to force button use."""
+        try:
+            await update.message.delete()
+        except:
+            pass
+            
+    

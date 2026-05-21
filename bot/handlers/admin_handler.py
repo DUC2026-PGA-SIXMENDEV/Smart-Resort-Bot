@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 #  bot/handlers/admin_handler.py — Staff Admin Panel
 # ============================================================
 import logging
@@ -262,6 +262,15 @@ class AdminHandler:
         await self.db.update_booking_status(booking_id, "CONFIRMED", f"Confirmed by {admin_name}")
         await self.sheets.update_booking_status(booking_id, "CONFIRMED")
         
+        # Decrease room available count
+        await self.sheets.decrease_room_available(booking["room_type"])
+        
+        # Get resort contact phone
+        resort_data = context.bot_data.get("resort_data", {})
+        resort_contact = resort_data.get("resort", {}).get("contact", {})
+        resort_phone = resort_contact.get("phone", "+855 12 345 678")
+        resort_email = resort_contact.get("email", "info@resort.com")
+        
         # Sync all admin messages
         notifs = await self.db.get_admin_notifications(booking_id)
         for aid, mid in notifs:
@@ -269,9 +278,17 @@ class AdminHandler:
                 # We update the original message text for all admins
                 new_text = (
                     f"✅ <b>Booking #{booking_id} CONFIRMED by {admin_name}</b>\n\n"
-                    f"Guest: {booking['guest_name']}\n"
-                    f"Room: {booking['room_type']}\n"
-                    f"Check-in: {booking['checkin_date']}"
+                    f"👤 <b>Guest:</b> {booking['guest_name']}\n"
+                    f"� <b>Phone:</b> {booking['guest_phone']}\n"
+                    f"�🛏️ <b>Room:</b> {booking['room_type']}\n"
+                    f"📅 <b>Check-in:</b> {booking['checkin_date']}\n"
+                    f"📅 <b>Check-out:</b> {booking['checkout_date']}\n"
+                    f"👥 <b>Guests:</b> {booking['num_guests']}\n\n"
+                    f"━━━━━━━━━━━━━━━━━━\n"
+                    f"📞 <b>Contact for Changes / ទាក់ទងសម្រាប់ការផ្លាស់ប្តូរ:</b>\n"
+                    f"☎️ {resort_phone}\n"
+                    f"📧 {resort_email}\n\n"
+                    f"<i>Share with guest if any changes needed / ចែករំលែកលេខនេះដល់ភ្ញៀវប្រសិនបើមានការផ្លាស់ប្តូរ</i>"
                 )
                 await context.bot.edit_message_text(
                     chat_id=aid, message_id=mid, text=new_text, parse_mode=ParseMode.HTML, reply_markup=None
@@ -285,6 +302,12 @@ class AdminHandler:
             user = await self.db.get_user(booking["user_id"])
             lang = user.get("language", "EN") if user else "EN"
             
+            # Get resort contact info
+            resort_data = context.bot_data.get("resort_data", {})
+            resort_contact = resort_data.get("resort", {}).get("contact", {})
+            resort_phone = resort_contact.get("phone", "+855 12 345 678")
+            resort_email = resort_contact.get("email", "info@resort.com")
+            
             if lang == "KH":
                 success_text = (
                     "🎉 <b>ការកក់របស់អ្នកទទួលបានជោគជ័យ!</b>\n\n"
@@ -292,7 +315,11 @@ class AdminHandler:
                     f"👤 ឈ្មោះ: {booking['guest_name']}\n"
                     f"🛏️ បន្ទប់: {booking['room_type']}\n"
                     f"📅 ថ្ងៃចូល: {booking['checkin_date']}\n"
-                    f"📅 ថ្ងៃចេញ: {booking['checkout_date']}"
+                    f"📅 ថ្ងៃចេញ: {booking['checkout_date']}\n\n"
+                    f"━━━━━━━━━━━━━━━━━━\n"
+                    f"📞 <b>ទាក់ទងសម្រាប់ការផ្លាស់ប្តូរ:</b>\n"
+                    f"☎️ {resort_phone}\n"
+                    f"📧 {resort_email}"
                 )
             else:
                 success_text = (
@@ -301,7 +328,11 @@ class AdminHandler:
                     f"👤 Name: {booking['guest_name']}\n"
                     f"🛏️ Room: {booking['room_type']}\n"
                     f"📅 Check-in: {booking['checkin_date']}\n"
-                    f"📅 Check-out: {booking['checkout_date']}"
+                    f"📅 Check-out: {booking['checkout_date']}\n\n"
+                    f"━━━━━━━━━━━━━━━━━━\n"
+                    f"📞 <b>Contact for Changes:</b>\n"
+                    f"☎️ {resort_phone}\n"
+                    f"📧 {resort_email}"
                 )
 
             await context.bot.send_message(
@@ -324,14 +355,29 @@ class AdminHandler:
         await self.db.update_booking_status(booking_id, "DECLINED", f"Declined by {admin_name}")
         await self.sheets.update_booking_status(booking_id, "DECLINED")
         
+        # Get resort contact phone
+        resort_data = context.bot_data.get("resort_data", {})
+        resort_contact = resort_data.get("resort", {}).get("contact", {})
+        resort_phone = resort_contact.get("phone", "+855 12 345 678")
+        resort_email = resort_contact.get("email", "info@resort.com")
+        
         # Sync all admin messages
         notifs = await self.db.get_admin_notifications(booking_id)
         for aid, mid in notifs:
             try:
                 new_text = (
                     f"❌ <b>Booking #{booking_id} DECLINED by {admin_name}</b>\n\n"
-                    f"Guest: {booking['guest_name']}\n"
-                    f"Room: {booking['room_type']}"
+                    f"👤 <b>Guest:</b> {booking['guest_name']}\n"
+                    f"� <b>Phone:</b> {booking['guest_phone']}\n"
+                    f"�🛏️ <b>Room:</b> {booking['room_type']}\n"
+                    f"📅 <b>Check-in:</b> {booking['checkin_date']}\n"
+                    f"📅 <b>Check-out:</b> {booking['checkout_date']}\n"
+                    f"👥 <b>Guests:</b> {booking['num_guests']}\n\n"
+                    f"━━━━━━━━━━━━━━━━━━\n"
+                    f"📞 <b>Contact for Rescheduling / ទាក់ទងដើម្បីកក់ឡើងវិញ:</b>\n"
+                    f"☎️ {resort_phone}\n"
+                    f"📧 {resort_email}\n\n"
+                    f"<i>Guest should contact to reschedule / ភ្ញៀវគួរតែទាក់ទងដើម្បីកក់ឡើងវិញ</i>"
                 )
                 await context.bot.edit_message_text(
                     chat_id=aid, message_id=mid, text=new_text, parse_mode=ParseMode.HTML, reply_markup=None
@@ -342,19 +388,41 @@ class AdminHandler:
 
         # Notify guest
         try:
-            await context.bot.send_message(
-                chat_id=booking["user_id"],
-                text=(
+            user = await self.db.get_user(booking["user_id"])
+            lang = user.get("language", "EN") if user else "EN"
+            
+            # Get resort contact info
+            resort_data = context.bot_data.get("resort_data", {})
+            resort_contact = resort_data.get("resort", {}).get("contact", {})
+            resort_phone = resort_contact.get("phone", "+855 12 345 678")
+            resort_email = resort_contact.get("email", "info@resort.com")
+            
+            decline_text = (
+                (
+                    f"😔 <b>ព័ត៌មានអំពីការកក់ (#{booking_id})</b>\n\n"
+                    "សូមអភ័យទោស! យើងមិនអាចបញ្ជាក់ការកក់សម្រាប់កាលបរិច្ឆេទដែលអ្នកបានជ្រើសរើសបានទេ។\n\n"
+                    "មូលហេតុអាចបណ្តាលមកពីបន្ទប់ពេញ ឬមិនមានបន្ទប់ទំនេរ។\n\n"
+                    "សូមទាក់ទងមកយើងខ្ញុំដើម្បីស្វែងរកជម្រើសផ្សេង៖\n"
+                    f"📞 {resort_phone}\n"
+                    f"📧 {resort_email}\n\n"
+                    "សូមអរគុណ និងសូមអភ័យទោសចំពោះភាពមិនងាយស្រួលនេះ 🙏"
+                )
+                if lang == "KH" else
+                (
                     f"😔 <b>Booking Update (#{booking_id})</b>\n\n"
-                    f"Unfortunately, we are unable to confirm your booking for the requested dates.\n\n"
+                    "Unfortunately, we are unable to confirm your booking for the requested dates.\n\n"
                     "This may be due to room unavailability.\n\n"
                     "Please contact us to find an alternative:\n"
-                    "📞 +855 12 345 678\n"
-                    "📧 info@paradiseresort.com.kh\n\n"
+                    f"📞 {resort_phone}\n"
+                    f"📧 {resort_email}\n\n"
                     "We apologize for the inconvenience! 🙏"
-                ),
+                )
+            )
+            await context.bot.send_message(
+                chat_id=booking["user_id"],
+                text=decline_text,
                 parse_mode=ParseMode.HTML,
-                reply_markup=main_menu_keyboard(),
+                reply_markup=start_again_keyboard(lang),
             )
         except Exception as e:
             logger.error("Failed to notify guest %s: %s", booking["user_id"], e)
