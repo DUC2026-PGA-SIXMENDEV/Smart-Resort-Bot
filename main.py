@@ -1,11 +1,10 @@
-# ============================================================
-#  main.py — Resort Telegram Bot Entry Point (No AI Version)
-# ============================================================
-import json
+﻿import json
 import logging
 import sys
 import io
+import asyncio
 from pathlib import Path
+from datetime import time
 
 # Force UTF-8 output on Windows
 if sys.platform == "win32":
@@ -33,7 +32,6 @@ from bot.handlers.booking_handler import (
 )
 from bot.handlers.admin_handler import AdminHandler
 
-# ── Logging Setup ────────────────────────────────────────────────────────────
 logging.basicConfig(
     format="%(asctime)s | %(levelname)-8s | %(name)s: %(message)s",
     level=logging.INFO,
@@ -54,7 +52,7 @@ def load_resort_data() -> dict:
         with open(RESORT_DATA_PATH, encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        logger.critical("❌ Failed to load resort_data.json: %s", e)
+        logger.critical("Failed to load resort_data.json: %s", e)
         sys.exit(1)
 
 async def post_init(application: Application) -> None:
@@ -65,11 +63,24 @@ async def post_init(application: Application) -> None:
     resort_name = resort_data.get("resort", {}).get("name", "Resort Bot")
     # Removed automatic description to allow manual setting via @BotFather
     # await application.bot.set_my_description(f"🏨 Welcome to {resort_name}! I'm here to help you book your stay easily.")
+    
+    # Schedule daily checkout sync (run in background, don't wait for it)
+    sheets: SheetsService = application.bot_data.get("sheets")
+    if sheets and application.job_queue:
+        # Run in background without blocking bot startup
+        asyncio.create_task(sheets.sync_checkout_availability())
+        # Then run daily at 1 AM UTC
+        application.job_queue.run_daily(sheets.sync_checkout_availability, time(1, 0), name="sync_checkouts")
+        logger.info("✅ Checkout sync job scheduled (daily at 1:00 UTC)")
+    
     logger.info("✅ Bot is ready. Resort: %s", resort_name)
 
 def build_application(config: Config) -> Application:
     db = Database(config.DATABASE_PATH)
     sheets = SheetsService(config.GOOGLE_SHEETS_CREDS, config.GOOGLE_SHEETS_NAME)
+    
+    # Pass sheets_service to database for live room availability fetching
+    db.sheets_service = sheets
 
     # Initialize handlers
     start_handler    = StartHandler(db, config.RESORT_NAME)
@@ -79,22 +90,37 @@ def build_application(config: Config) -> Application:
 
     app = Application.builder().token(config.TELEGRAM_BOT_TOKEN).post_init(post_init).build()
     app.bot_data["db"] = db
+    app.bot_data["sheets"] = sheets
 
     # ── Booking Conversation Handler ─────────────────────────────────────────
     booking_conv = ConversationHandler(
         entry_points=[
-            CallbackQueryHandler(booking_handler.start_booking, pattern=r"^booking_(start|room_.+)$"),
-            CallbackQueryHandler(booking_handler.start_check_availability, pattern=r"^menu_availability$")
+            CallbackQueryHandler(booking_handler.start_booking, pattern=r"^booking_(start|room_.+)$")
         ],
         states={
             NAME:      [MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.get_name)],
             PHONE:     [MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.get_phone)],
-            CHECKIN:   [CallbackQueryHandler(booking_handler.get_checkin, pattern=r"^(cal_|ignore)")],
-            CHECKOUT:  [CallbackQueryHandler(booking_handler.get_checkout, pattern=r"^(cal_|ignore)")],
-            ROOM_TYPE: [CallbackQueryHandler(booking_handler.get_room_type, pattern=r"^(room_|booking_cancel)")],
+            CHECKIN:   [
+                CallbackQueryHandler(booking_handler.get_checkin, pattern=r"^(cal_|ignore)"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.checkin_text_blocked),
+            ],
+            CHECKOUT:  [
+                CallbackQueryHandler(booking_handler.get_checkout, pattern=r"^(cal_|ignore)"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.checkout_text_blocked),
+            ],
+            ROOM_TYPE: [
+                CallbackQueryHandler(booking_handler.get_room_type, pattern=r"^(room_|booking_cancel)"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.room_type_text_blocked),
+            ],
             GUESTS:    [MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.get_guests)],
-            SPECIAL:   [CallbackQueryHandler(booking_handler.get_special, pattern=r"^sp_")],
-            CONFIRM:   [CallbackQueryHandler(booking_handler.confirm_booking, pattern=r"^(booking_|edit_)")],
+            SPECIAL:   [
+                CallbackQueryHandler(booking_handler.get_special, pattern=r"^sp_"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.special_text_blocked),
+            ],
+            CONFIRM:   [
+                CallbackQueryHandler(booking_handler.confirm_booking, pattern=r"^(booking_|edit_)"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.confirm_text_blocked),
+            ],
             ROOM_ID_INPUT: [
                 CallbackQueryHandler(booking_handler.handle_room_id_callback, pattern=r"^input_room_id$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.get_room_id)

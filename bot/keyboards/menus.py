@@ -1,7 +1,7 @@
 # ============================================================
 #  bot/keyboards/menus.py — Bilingual Keyboard Menus
 # ============================================================
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
 
 def language_start_keyboard() -> InlineKeyboardMarkup:
     """First-run language selection — Khmer and English in one row."""
@@ -26,9 +26,10 @@ def main_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     if lang == "KH":
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("📋 កក់បន្ទប់ឥឡូវនេះ", callback_data="booking_start")],
-            [InlineKeyboardButton("📊 ពិនិត្យមើលបន្ទប់ទំនេរ", callback_data="menu_availability")],
-            [InlineKeyboardButton("🛏️ ប្រភេទបន្ទប់",   callback_data="menu_rooms")],
-            [InlineKeyboardButton("🏨 សេវាកម្មរីសត",   callback_data="menu_facilities")],
+            [
+                InlineKeyboardButton("🛏️ ប្រភេទបន្ទប់",   callback_data="menu_rooms"),
+                InlineKeyboardButton("🏨 សេវាកម្មរីសត",   callback_data="menu_facilities")
+            ],
             [
                 InlineKeyboardButton("📍 ទីតាំង",       callback_data="menu_location"),
                 InlineKeyboardButton("📞 ទំនាក់ទំនង",   callback_data="menu_contact")
@@ -42,9 +43,10 @@ def main_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     else:
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("📋 Book a Room Now", callback_data="booking_start")],
-            [InlineKeyboardButton("📊 Check Availability", callback_data="menu_availability")],
-            [InlineKeyboardButton("🛏️ Our Rooms",      callback_data="menu_rooms")],
-            [InlineKeyboardButton("🏨 Resort Facilities", callback_data="menu_facilities")],
+            [
+                InlineKeyboardButton("🛏️ Our Rooms",      callback_data="menu_rooms"),
+                InlineKeyboardButton("🏨 Resort Facilities", callback_data="menu_facilities")
+            ],
             [
                 InlineKeyboardButton("📍 Location",      callback_data="menu_location"),
                 InlineKeyboardButton("📞 Contact Us",    callback_data="menu_contact")
@@ -89,48 +91,61 @@ def back_to_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data="menu_back")]])
 
 def start_again_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
-    label = "🔄 ចាប់ផ្តើមឡើងវិញ" if lang == "KH" else "🔄 Start Again"
+    label = "🔁 ចាប់ផ្តើមម្តងទៀត" if lang == "KH" else "🔁 Start Again"
     return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data="menu_back")]])
-
 def booking_room_availability_keyboard(rooms_with_status: list, lang: str = "EN") -> InlineKeyboardMarkup:
-    """Shows room list with availability tags in a 2x2 GRID (Mobile Optimized)."""
+    """Shows one room per row with language-specific labels and availability."""
     buttons = []
-    row = []
-    for r in rooms_with_status:
-        # Get just the first word of the name to keep it short
-        short_name = r['name'].split()[0]
-        count = r.get("remains", 0)
-        
-        if r.get("is_available"):
-            # Result: "🏠 Superior [5]"
-            label = f"{r['emoji']} {short_name} [{count}]"
-            row.append(InlineKeyboardButton(label, callback_data=f"room_{r['id']}"))
-        else:
-            # Result: "🚫 Superior [0]"
-            label = f"🚫 {short_name} [0]"
-            row.append(InlineKeyboardButton(label, callback_data="ignore"))
-            
-        if len(row) == 2:
-            buttons.append(row)
-            row = []
-    
-    if row: buttons.append(row)
-    
-    cancel_label = "❌ បោះបង់" if lang == "KH" else "❌ Cancel"
-    buttons.append([InlineKeyboardButton(cancel_label, callback_data="booking_cancel")])
-    return InlineKeyboardMarkup(buttons)
 
+    kh_name_by_id = {
+        "superior": "\u1794\u1793\u17d2\u1791\u1794\u17cb\u1782\u17d2\u179a\u17c2\u1798\u17bd\u1799",
+        "deluxe": "\u1794\u1793\u17d2\u1791\u1794\u17cb\u1782\u17d2\u179a\u17c2\u1796\u17b8\u179a",
+        "family": "\u1794\u1793\u17d2\u1791\u1794\u17cb\u1782\u17d2\u179a\u17bd\u179f\u17b6\u179a",
+        "executive": "\u1794\u1793\u17d2\u1791\u1794\u17cb VIP",
+    }
+    kh_name_by_en = {
+        "Single Bed Room": "\u1794\u1793\u17d2\u1791\u1794\u17cb\u1782\u17d2\u179a\u17c2\u1798\u17bd\u1799",
+        "Twin Room": "\u1794\u1793\u17d2\u1791\u1794\u17cb\u1782\u17d2\u179a\u17c2\u1796\u17b8\u179a",
+        "Family Room": "\u1794\u1793\u17d2\u1791\u1794\u17cb\u1782\u17d2\u179a\u17bd\u179f\u17b6\u179a",
+        "VIP Room / Deluxe": "\u1794\u1793\u17d2\u1791\u1794\u17cb VIP",
+    }
+
+    for r in rooms_with_status:
+        count = int(r.get("remains", 0))
+        en_name = str(r.get("name", "")).strip()
+        rid = str(r.get("id", "")).strip().lower()
+        kh_name = kh_name_by_id.get(rid) or kh_name_by_en.get(en_name, en_name)
+
+        if lang == "KH":
+            name_text = kh_name
+            status_text = f"\u1791\u17c6\u1793\u17c1\u179a {count}" if count > 0 else "\u17a2\u179f\u17cb\u1794\u1793\u17d2\u1791\u1794\u17cb"
+        else:
+            name_text = en_name
+            status_text = f"{count} available" if count > 0 else "Sold out"
+
+        if r.get("is_available"):
+            label = f"{r['emoji']} {name_text} [{status_text}]"
+            buttons.append([InlineKeyboardButton(label, callback_data=f"room_{r['id']}")])
+        else:
+            label = f"\U0001F6AB {name_text} [{status_text}]"
+            buttons.append([InlineKeyboardButton(label, callback_data="ignore")])
+
+    return InlineKeyboardMarkup(buttons)
 def booking_confirm_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     if lang == "KH":
         return InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ បញ្ជាក់ការកក់", callback_data="booking_confirm")],
-            [InlineKeyboardButton("✏️ កែប្រែព័ត៌មាន", callback_data="booking_edit_menu")],
+            [
+                InlineKeyboardButton("✅ បញ្ជាក់ការកក់", callback_data="booking_confirm"),
+                InlineKeyboardButton("✏️ កែប្រែព័ត៌មាន", callback_data="booking_edit_menu")
+            ],
             [InlineKeyboardButton("❌ បោះបង់",      callback_data="booking_cancel")]
         ])
     else:
         return InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Confirm Booking", callback_data="booking_confirm")],
-            [InlineKeyboardButton("✏️ Edit Details",    callback_data="booking_edit_menu")],
+            [
+                InlineKeyboardButton("✅ Confirm Booking", callback_data="booking_confirm"),
+                InlineKeyboardButton("✏️ Edit Details",    callback_data="booking_edit_menu")
+            ],
             [InlineKeyboardButton("❌ Cancel",          callback_data="booking_cancel")]
         ])
 
@@ -183,3 +198,12 @@ def admin_booking_action_keyboard(booking_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton("❌ Decline", callback_data=f"admin_decline_{booking_id}")
         ]
     ])
+
+def booking_cancel_reply_keyboard(lang: str = "EN") -> ReplyKeyboardMarkup:
+    """A clean Reply Keyboard with a single Cancel button to freeze active text inputs."""
+    button_text = "❌ Cancel Booking" if lang == "EN" else "❌ បោះបង់ការកក់"
+    return ReplyKeyboardMarkup(
+        [[button_text]],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )

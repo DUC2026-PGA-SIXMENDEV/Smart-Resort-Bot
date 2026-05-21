@@ -66,7 +66,7 @@ class SheetsService:
             return {}
 
     async def get_room_inventory(self) -> dict:
-        """Fetches total room counts from the 'Rooms' tab (Non-blocking)."""
+        """Fetches available room counts from the 'Rooms' tab (Non-blocking)."""
         try:
             if not self.client: self._connect()
             
@@ -79,23 +79,41 @@ class SheetsService:
             if not rows: return {}
 
             # Parse headers and find column indices
-            headers = [str(h).strip() for h in rows[0]]
-            try:
-                name_idx = headers.index("Room Type")
-                total_idx = headers.index("Total Inventory")
-            except ValueError:
-                logger.error("❌ 'Room Type' or 'Total Inventory' column missing in 'Rooms' tab.")
-                return {}
+            headers = [str(h).strip().lower() for h in rows[0]]
+            
+            # Find column indices with flexible matching
+            name_idx = None
+            avail_idx = None
+            
+            for i, header in enumerate(headers):
+                if "room type" in header or "room name" in header:
+                    name_idx = i
+                if "available" in header or "avail" in header:
+                    avail_idx = i
+            
+            # Fallback to positional columns if header matching fails
+            if name_idx is None or avail_idx is None:
+                if len(rows[0]) >= 3:
+                    name_idx = 0  # Column A: Room Type
+                    avail_idx = 2  # Column C: Available
+                    logger.warning("⚠️ Using positional columns (A, C) instead of header matching")
+                else:
+                    logger.error("❌ Could not find 'Room Type' or 'Available' columns in 'Rooms' tab.")
+                    return {}
 
             inventory = {}
-            for row in rows[1:]: # Skip the header row
-                if len(row) > max(name_idx, total_idx):
+            for row in rows[1:]:  # Skip the header row
+                if len(row) > max(name_idx, avail_idx):
                     name = str(row[name_idx]).strip()
-                    total = str(row[total_idx]).strip()
+                    avail = str(row[avail_idx]).strip()
                     if name:
-                        try: inventory[name] = int(total)
-                        except: inventory[name] = 0
+                        try:
+                            inventory[name] = int(avail)
+                            logger.debug(f"✓ {name}: {avail} available")
+                        except:
+                            inventory[name] = 0
             
+            logger.info(f"📊 Loaded inventory: {inventory}")
             return inventory
         except Exception as e:
             logger.error(f"Error fetching room inventory: {e}")
@@ -130,6 +148,31 @@ class SheetsService:
             logger.error(f"Error calculating occupancy: {e}")
             return 0
 
+    async def get_bookings_during(self, checkin: str, checkout: str) -> list[dict]:
+        """Fetches all sheet records and filters down to those overlapping with the requested date range."""
+        try:
+            if not self.sheet: self._connect()
+            records = await asyncio.to_thread(self.sheet.get_all_records)
+            
+            fmt = "%d/%m/%Y"
+            q_in = datetime.strptime(checkin, fmt).date()
+            q_out = datetime.strptime(checkout, fmt).date()
+            
+            active_bookings = []
+            for r in records:
+                if r.get("Status") not in ["CONFIRMED", "PAID"]:
+                    continue
+                try:
+                    r_in = datetime.strptime(r["Check-in"], fmt).date()
+                    r_out = datetime.strptime(r["Check-out"], fmt).date()
+                    if (q_in < r_out) and (q_out > r_in):
+                        active_bookings.append(r)
+                except: continue
+            return active_bookings
+        except Exception as e:
+            logger.error(f"Error fetching bookings during range: {e}")
+            return []
+
     async def append_booking(self, b: list):
         """Appends a booking row (Non-blocking)."""
         try:
@@ -154,3 +197,106 @@ class SheetsService:
             await asyncio.to_thread(do_update)
         except Exception as e:
             logger.error("❌ Status update failed: %s", e)
+
+    async def decrease_room_available(self, room_name: str) -> bool:
+        """Decrease 'Available' count in Rooms sheet when booking confirmed (Non-blocking)."""
+        try:
+            if not self.client: self._connect()
+            
+            def do_update():
+                rooms_sheet = self.client.open(self.sheet_name).worksheet("Rooms")
+                rows = rooms_sheet.get_all_values()
+                
+                headers = [str(h).strip() for h in rows[0]]
+                try:
+                    name_idx = headers.index("Room Type")
+                    avail_idx = headers.index("Available")
+                except ValueError:
+                    logger.error("❌ 'Room Type' or 'Available' column missing in 'Rooms' tab.")
+                    return False
+                
+                for i, row in enumerate(rows[1:], start=2):
+                    if len(row) > max(name_idx, avail_idx):
+                        if str(row[name_idx]).strip() == room_name.strip():
+                            try:
+                                current = int(str(row[avail_idx]).strip() or 0)
+                                new_count = max(0, current - 1)
+                                rooms_sheet.update_cell(i, avail_idx + 1, new_count)
+                                logger.info(f"✅ Room '{room_name}' available decreased to {new_count}")
+                                return True
+                            except: pass
+                return False
+            
+            return await asyncio.to_thread(do_update)
+        except Exception as e:
+            logger.error(f"❌ Failed to decrease room available: {e}")
+            return False
+
+    async def increase_room_available(self, room_name: str) -> bool:
+        """Increase 'Available' count in Rooms sheet when checkout happens (Non-blocking)."""
+        try:
+            if not self.client: self._connect()
+            
+            def do_update():
+                rooms_sheet = self.client.open(self.sheet_name).worksheet("Rooms")
+                rows = rooms_sheet.get_all_values()
+                
+                headers = [str(h).strip() for h in rows[0]]
+                try:
+                    name_idx = headers.index("Room Type")
+                    avail_idx = headers.index("Available")
+                    total_idx = headers.index("Total Inventory")
+                except ValueError:
+                    logger.error("❌ Required columns missing in 'Rooms' tab.")
+                    return False
+                
+                for i, row in enumerate(rows[1:], start=2):
+                    if len(row) > max(name_idx, avail_idx, total_idx):
+                        if str(row[name_idx]).strip() == room_name.strip():
+                            try:
+                                current = int(str(row[avail_idx]).strip() or 0)
+                                total = int(str(row[total_idx]).strip() or 0)
+                                new_count = min(total, current + 1)  # Don't exceed total
+                                rooms_sheet.update_cell(i, avail_idx + 1, new_count)
+                                logger.info(f"✅ Room '{room_name}' available increased to {new_count}")
+                                return True
+                            except: pass
+                return False
+            
+            return await asyncio.to_thread(do_update)
+        except Exception as e:
+            logger.error(f"❌ Failed to increase room available: {e}")
+            return False
+
+    async def sync_checkout_availability(self):
+        """Check for past checkouts and increase room availability accordingly (Non-blocking)."""
+        try:
+            if not self.sheet: self._connect()
+            records = await asyncio.to_thread(self.sheet.get_all_records)
+            
+            today = datetime.now().date()
+            fmt = "%d/%m/%Y"
+            
+            # Track rooms with past checkouts
+            rooms_to_increase = {}
+            for r in records:
+                if r.get("Status") not in ["CONFIRMED", "PAID"]:
+                    continue
+                
+                checkout_str = r.get("Check-out", "")
+                if checkout_str:
+                    try:
+                        checkout_date = datetime.strptime(checkout_str, fmt).date()
+                        if checkout_date <= today:  # Past checkout date
+                            room_name = r.get("Room Type", "")
+                            if room_name:
+                                rooms_to_increase[room_name] = rooms_to_increase.get(room_name, 0) + 1
+                    except: pass
+            
+            # Increase availability for rooms with past checkouts
+            for room_name, count in rooms_to_increase.items():
+                for _ in range(count):
+                    await self.increase_room_available(room_name)
+                    
+        except Exception as e:
+            logger.error(f"❌ Failed to sync checkout availability: {e}")
