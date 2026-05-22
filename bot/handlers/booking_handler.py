@@ -44,9 +44,12 @@ class BookingHandler:
 
     async def start_booking(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         query = update.callback_query
-        await query.answer()
+        if query:
+            await query.answer()
+            user_id = query.from_user.id
+        else:
+            user_id = update.effective_user.id
 
-        user_id = query.from_user.id
         user = await self.db.get_user(user_id)
         lang = user.get("language", "EN") if user else "EN"
         context.user_data["lang"] = lang 
@@ -55,11 +58,18 @@ class BookingHandler:
         context.user_data["is_check_only"] = False
 
         msg = self._get_status_header(context) + ("📅 <b>សូមជ្រើសរើសថ្ងៃចូលស្នាក់នៅ:</b>" if lang == "KH" else "📅 <b>Please select your Check-in date:</b>")
-        await query.edit_message_text(
-            msg, 
-            parse_mode=ParseMode.HTML, 
-            reply_markup=create_calendar(lang=lang)
-        )
+        if query:
+            await query.edit_message_text(
+                msg, 
+                parse_mode=ParseMode.HTML, 
+                reply_markup=create_calendar(lang=lang)
+            )
+        else:
+            await update.message.reply_text(
+                msg, 
+                parse_mode=ParseMode.HTML, 
+                reply_markup=create_calendar(lang=lang)
+            )
         return CHECKIN
 
     async def start_check_availability(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -212,6 +222,9 @@ class BookingHandler:
         data = query.data
         lang = context.user_data.get("lang", "EN")
 
+        if data == "booking_cancel":
+            return await self.cancel(update, context)
+
         if data.startswith("cal_nav_"):
             await query.answer()
             _, _, m, y = data.split("_")
@@ -247,6 +260,9 @@ class BookingHandler:
         query = update.callback_query
         data = query.data
         lang = context.user_data.get("lang", "EN")
+
+        if data == "booking_cancel":
+            return await self.cancel(update, context)
 
         if data.startswith("cal_nav_"):
             await query.answer()
@@ -777,7 +793,6 @@ class BookingHandler:
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         lang = context.user_data.get("lang", "EN")
-        msg = "❌ ការកក់ត្រូវបានបោះបង់" if lang == "KH" else "❌ Booking cancelled."
         
         # Cleanup last bot msg id if exists
         last_msg_id = context.user_data.get("last_bot_msg_id")
@@ -797,8 +812,16 @@ class BookingHandler:
         except:
             pass
 
+        text = (
+            f"🙏 <b>រីករាយដែលបានជួបអ្នកម្តងទៀត!</b>\n"
+            "តើមានអ្វីដែលខ្ញុំអាចជួយអ្នកបាន?"
+        ) if lang == "KH" else (
+            f"🙏 <b>Welcome back!</b>\n"
+            "How can I assist you today?"
+        )
+
         if update.callback_query:
-            await update.callback_query.edit_message_text(msg, reply_markup=back_to_menu_keyboard(lang))
+            await update.callback_query.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=main_menu_keyboard(lang))
         else:
-            await update.message.reply_text(msg, reply_markup=back_to_menu_keyboard(lang))
+            await update.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=main_menu_keyboard(lang))
         return ConversationHandler.END
