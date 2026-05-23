@@ -14,7 +14,7 @@ A production-grade Telegram bot built for resort/hotel businesses. Handles custo
 | 🌐 Bilingual | English 🇺🇸 & Khmer 🇰🇭 language support |
 | 💾 Database | Full SQLite history: users, conversations, bookings, ratings |
 | 🏠 Menu Navigation | Rich inline keyboards for all resort info sections |
-| ⭐ Rating System | Post-stay feedback collection |
+
 
 ---
 
