@@ -49,6 +49,19 @@ class StartHandler:
         )
         logger.info(f"User {user.id} ({user.first_name}) started the bot — showing language menu.")
 
+    async def language(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /language command — Show language selection."""
+        # Show Language Menu
+        text = (
+            "🌐 <b>សូមជ្រើសរើសភាសារបស់អ្នក:</b>\n\n"
+            "Please choose your language:"
+        )
+        await update.message.reply_text(
+            text, 
+            parse_mode=ParseMode.HTML, 
+            reply_markup=language_start_keyboard()
+        )
+
     # ------------------------------------------------------------------
     # Language Selection Callback
     # ------------------------------------------------------------------

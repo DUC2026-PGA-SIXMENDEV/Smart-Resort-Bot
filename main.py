@@ -31,6 +31,7 @@ from bot.handlers.booking_handler import (
     NAME, PHONE, CHECKIN, CHECKOUT, ROOM_TYPE, GUESTS, SPECIAL, CONFIRM, ROOM_ID_INPUT,
 )
 from bot.handlers.admin_handler import AdminHandler
+from bot.services.gspread_workflow import GspreadSheetsManager, handle_admin_checkout_callback
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)-8s | %(name)s: %(message)s",
@@ -46,6 +47,13 @@ logging.getLogger("telegram").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 RESORT_DATA_PATH = Path(__file__).parent / "data" / "resort_data.json"
+
+def ensure_main_event_loop() -> None:
+    """Create a main-thread event loop for libraries that still call get_event_loop()."""
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
 
 def load_resort_data() -> dict:
     try:
@@ -78,6 +86,7 @@ async def post_init(application: Application) -> None:
 def build_application(config: Config) -> Application:
     db = Database(config.DATABASE_PATH)
     sheets = SheetsService(config.GOOGLE_SHEETS_CREDS, config.GOOGLE_SHEETS_NAME)
+    gspread_manager = GspreadSheetsManager(config.GOOGLE_SHEETS_CREDS, config.GOOGLE_SHEETS_NAME)
     
     # Pass sheets_service to database for live room availability fetching
     db.sheets_service = sheets
@@ -91,21 +100,24 @@ def build_application(config: Config) -> Application:
     app = Application.builder().token(config.TELEGRAM_BOT_TOKEN).post_init(post_init).build()
     app.bot_data["db"] = db
     app.bot_data["sheets"] = sheets
+    app.bot_data["gspread_manager"] = gspread_manager
 
     # ── Booking Conversation Handler ─────────────────────────────────────────
     booking_conv = ConversationHandler(
         entry_points=[
-            CallbackQueryHandler(booking_handler.start_booking, pattern=r"^booking_(start|room_.+)$")
+            CallbackQueryHandler(booking_handler.start_booking, pattern=r"^(booking_start|menu_booking|booking|booking_room_.+)$"),
+            CallbackQueryHandler(booking_handler.start_check_availability, pattern=r"^(check_availability|menu_check)$"),
+            CommandHandler("booking", booking_handler.start_booking)
         ],
         states={
             NAME:      [MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.get_name)],
             PHONE:     [MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.get_phone)],
             CHECKIN:   [
-                CallbackQueryHandler(booking_handler.get_checkin, pattern=r"^(cal_|ignore)"),
+                CallbackQueryHandler(booking_handler.get_checkin, pattern=r"^(cal_|ignore|booking_cancel)"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.checkin_text_blocked),
             ],
             CHECKOUT:  [
-                CallbackQueryHandler(booking_handler.get_checkout, pattern=r"^(cal_|ignore)"),
+                CallbackQueryHandler(booking_handler.get_checkout, pattern=r"^(cal_|ignore|booking_cancel)"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.checkout_text_blocked),
             ],
             ROOM_TYPE: [
@@ -133,9 +145,11 @@ def build_application(config: Config) -> Application:
     # ── Registration ──────────────────────────────────────────────────────────
     app.add_handler(CommandHandler("start", start_handler.start))
     app.add_handler(CommandHandler("admin", admin_handler.admin_panel))
+    app.add_handler(CommandHandler("language", start_handler.language))
     app.add_handler(booking_conv)
     app.add_handler(CallbackQueryHandler(start_handler.set_language, pattern=r"^start_lang_"))
     app.add_handler(CallbackQueryHandler(admin_handler.handle_admin_callback, pattern=r"^admin_"))
+    app.add_handler(CallbackQueryHandler(handle_admin_checkout_callback, pattern=r"^checkout_"))
     app.add_handler(CallbackQueryHandler(customer_handler.handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, customer_handler.handle_message))
 
@@ -143,6 +157,7 @@ def build_application(config: Config) -> Application:
 
 if __name__ == "__main__":
     try:
+        ensure_main_event_loop()
         conf = Config()
         application = build_application(conf)
         print("\n" + "="*50 + "\n  PARADISE RESORT TELEGRAM BOT v1.1 (Lite)\n  No-AI Professional Booking System\n" + "="*50)

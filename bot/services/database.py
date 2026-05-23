@@ -364,6 +364,19 @@ class Database:
                 rows = await cursor.fetchall()
                 return [dict(r) for r in rows]
 
+    async def get_active_bookings(self) -> list[dict]:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("""
+                SELECT b.*, u.username, u.first_name
+                FROM bookings b
+                LEFT JOIN users u ON b.user_id = u.user_id
+                WHERE b.status IN ('CONFIRMED', 'PAID')
+                ORDER BY b.created_at ASC
+            """) as cursor:
+                rows = await cursor.fetchall()
+                return [dict(r) for r in rows]
+
     async def get_all_bookings(self, limit: int = 20) -> list[dict]:
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
