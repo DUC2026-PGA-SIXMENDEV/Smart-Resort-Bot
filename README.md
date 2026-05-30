@@ -141,3 +141,33 @@ Admin ← 🔔 New booking notification
 
 ---
 
+## Render Deployment
+
+This bot now supports Render Web Services.
+
+Recommended Render settings:
+
+```text
+Build Command: pip install -r requirements.txt
+Start Command: python main.py
+```
+
+Required environment variables on Render:
+
+```text
+TELEGRAM_BOT_TOKEN=your BotFather token
+ADMIN_IDS=your Telegram user id, or comma-separated ids
+GOOGLE_SHEETS_NAME=Resort Bookings
+GOOGLE_SHEETS_CREDS_JSON=paste the full Google service-account JSON here
+AVAILABILITY_REFRESH_SECONDS=60
+WEBHOOK_URL=https://your-render-service-name.onrender.com
+WEBHOOK_PATH=telegram
+DROP_PENDING_UPDATES=false
+```
+
+Do not commit `.env` or `credentials.json`. They are intentionally ignored by git.
+
+If you do not know the Render URL yet, deploy once, copy the generated `https://...onrender.com` URL, set `WEBHOOK_URL`, then redeploy.
+
+Important Render note: Free Web Services can sleep when they have no inbound HTTP traffic. Webhook mode is better than polling on a free web service because Telegram sends inbound requests to wake the service, but it is not true always-on hosting. For a bot that must respond instantly 24/7, use a paid Render instance or deploy this as a Render Background Worker with `python main.py` and leave `WEBHOOK_URL` empty.
+

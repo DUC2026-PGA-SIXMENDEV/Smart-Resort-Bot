@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: smart-resort-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: GOOGLE_SHEETS_NAME
+        sync: false
+      - key: GOOGLE_SHEETS_CREDS_JSON
+        sync: false
+      - key: AVAILABILITY_REFRESH_SECONDS
+        value: "60"
+      - key: WEBHOOK_URL
+        sync: false
+      - key: WEBHOOK_PATH
+        value: telegram
+      - key: DROP_PENDING_UPDATES
+        value: "false"

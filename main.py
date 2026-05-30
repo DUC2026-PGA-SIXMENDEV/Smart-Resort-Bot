@@ -3,6 +3,9 @@ import logging
 import sys
 import io
 import asyncio
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from datetime import time
 
@@ -47,6 +50,92 @@ logging.getLogger("telegram").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 RESORT_DATA_PATH = Path(__file__).parent / "data" / "resort_data.json"
+
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    """Small HTTP endpoint for Render web services running in polling mode."""
+
+    def _send_ok(self, include_body: bool = True) -> None:
+        body = b"ok\n"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body) if include_body else 0))
+        self.end_headers()
+        if include_body:
+            self.wfile.write(body)
+
+    def do_GET(self) -> None:
+        if self.path in {"/", "/health", "/healthz"}:
+            self._send_ok()
+            return
+        self.send_error(404)
+
+    def do_HEAD(self) -> None:
+        if self.path in {"/", "/health", "/healthz"}:
+            self._send_ok(include_body=False)
+            return
+        self.send_error(404)
+
+    def log_message(self, format: str, *args: object) -> None:
+        logger.debug("Health check: " + format, *args)
+
+
+def start_health_server() -> None:
+    """Bind Render's PORT so a polling bot can run as a web service."""
+    port_value = os.getenv("PORT")
+    if not port_value:
+        return
+
+    try:
+        port = int(port_value)
+    except ValueError:
+        logger.warning("Ignoring invalid PORT value: %r", port_value)
+        return
+
+    server = ThreadingHTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    thread = threading.Thread(target=server.serve_forever, name="health-server", daemon=True)
+    thread.start()
+    logger.info("Health server listening on 0.0.0.0:%s", port)
+
+
+def env_flag(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def run_bot(application: Application) -> None:
+    """Run with Telegram webhooks on Render when configured, otherwise polling."""
+    webhook_url = os.getenv("WEBHOOK_URL", "").strip()
+
+    if webhook_url:
+        webhook_path = os.getenv("WEBHOOK_PATH", "telegram").strip("/") or "telegram"
+        try:
+            port = int(os.getenv("PORT", "10000"))
+        except ValueError:
+            port = 10000
+        public_base_url = webhook_url.rstrip("/")
+        full_webhook_url = (
+            public_base_url
+            if public_base_url.endswith(f"/{webhook_path}")
+            else f"{public_base_url}/{webhook_path}"
+        )
+        logger.info("Starting Telegram webhook on 0.0.0.0:%s/%s", port, webhook_path)
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            url_path=webhook_path,
+            webhook_url=full_webhook_url,
+            drop_pending_updates=env_flag("DROP_PENDING_UPDATES", False),
+            secret_token=os.getenv("WEBHOOK_SECRET_TOKEN") or None,
+        )
+        return
+
+    start_health_server()
+    logger.info("Starting Telegram polling")
+    application.run_polling(drop_pending_updates=env_flag("DROP_PENDING_UPDATES", True))
+
 
 def ensure_main_event_loop() -> None:
     """Create a main-thread event loop for libraries that still call get_event_loop()."""
@@ -161,6 +250,7 @@ if __name__ == "__main__":
         conf = Config()
         application = build_application(conf)
         print("\n" + "="*50 + "\n  PARADISE RESORT TELEGRAM BOT v1.1 (Lite)\n  No-AI Professional Booking System\n" + "="*50)
-        application.run_polling(drop_pending_updates=True)
+        run_bot(application)
     except Exception as e:
-        logger.error("❌ Fatal error: %s", e)
+        logger.exception("Fatal error: %s", e)
+        sys.exit(1)

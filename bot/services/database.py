@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 import pytz
 import asyncio
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class Database:
         self._room_cache = {}
         self._cache_lock = asyncio.Lock()
         self._cache_refresh_task = None
+        self._cache_refresh_seconds = self._get_cache_refresh_seconds()
 
     async def initialize(self):
         """Create all tables on first run."""
@@ -111,16 +113,25 @@ class Database:
         """Start the background task that periodically refreshes room availability cache."""
         if self._cache_refresh_task is None or self._cache_refresh_task.done():
             self._cache_refresh_task = asyncio.create_task(self._refresh_cache_loop())
-            logger.info("✅ Started room availability cache refresh task (every 10 seconds)")
+            logger.info(
+                "✅ Started room availability cache refresh task (every %s seconds)",
+                self._cache_refresh_seconds,
+            )
+
+    def _get_cache_refresh_seconds(self) -> int:
+        try:
+            return max(30, int(os.getenv("AVAILABILITY_REFRESH_SECONDS", "60")))
+        except ValueError:
+            return 60
 
     async def _refresh_cache_loop(self):
-        """Background task that refreshes cache every 10 seconds."""
+        """Background task that refreshes the room availability cache."""
         # First refresh immediately
         await self._refresh_cache_from_sheets()
         
         while True:
             try:
-                await asyncio.sleep(10)  # Refresh every 10 seconds (was 30)
+                await asyncio.sleep(self._cache_refresh_seconds)
                 await self._refresh_cache_from_sheets()
             except asyncio.CancelledError:
                 logger.info("📋 Cache refresh task stopped")
@@ -153,7 +164,7 @@ class Database:
     async def get_available_rooms(self) -> dict:
         """
         Returns cached room availability from Sheets Column C.
-        Cache is refreshed every 10 seconds in the background automatically.
+        Cache is refreshed periodically in the background automatically.
         Instant response - NO network calls for each user request.
         """
         async with self._cache_lock:

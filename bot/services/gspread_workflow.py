@@ -1,15 +1,33 @@
 import asyncio
+import logging
 import gspread
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup  # type: ignore[import]
 from telegram.ext import ContextTypes  # type: ignore[import]
 
+logger = logging.getLogger(__name__)
+
 class GspreadSheetsManager:
     def __init__(self, credentials_path: str, sheet_name: str):
-        # Initialize gspread connection
-        self.gc = gspread.service_account(filename=credentials_path)
-        self.sh = self.gc.open(sheet_name)
-        self.sheet1 = self.sh.worksheet("Sheet1")
-        self.rooms_sheet = self.sh.worksheet("Rooms")
+        self.credentials_path = credentials_path
+        self.sheet_name = sheet_name
+        self.gc = None
+        self.sh = None
+        self.sheet1 = None
+        self.rooms_sheet = None
+
+    def _connect(self) -> bool:
+        if self.sheet1 is not None and self.rooms_sheet is not None:
+            return True
+
+        try:
+            self.gc = gspread.service_account(filename=self.credentials_path)
+            self.sh = self.gc.open(self.sheet_name)
+            self.sheet1 = self.sh.worksheet("Sheet1")
+            self.rooms_sheet = self.sh.worksheet("Rooms")
+            return True
+        except Exception as e:
+            logger.error("Sheets workflow connection failed: %s", e)
+            return False
 
     def _clean_room_name(self, name: str) -> str:
         """Strips leading emojis/symbols so it matches Google Sheets plain text."""
@@ -20,6 +38,9 @@ class GspreadSheetsManager:
 
     def deduct_inventory(self, room_type: str) -> bool:
         """Subtracts 1 from the Available column for the given room type."""
+        if not self._connect():
+            return False
+
         try:
             # Try exact match first, if not found, strip the emoji
             try:
@@ -58,6 +79,9 @@ class GspreadSheetsManager:
 
     def process_checkout(self, booking_id: str, room_type: str) -> bool:
         """Updates booking status to CHECKED OUT and adds 1 back to Available."""
+        if not self._connect():
+            return False
+
         # a) Look up Booking ID in "Sheet1" and update Status
         try:
             booking_cell = None
