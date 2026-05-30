@@ -12,7 +12,7 @@ A production-grade Telegram bot built for resort/hotel businesses. Handles custo
 | 👨‍💼 Admin Panel | Staff can confirm/decline bookings, view stats, broadcast |
 | 🔔 Notifications | Instant admin alerts + guest confirmation messages |
 | 🌐 Bilingual | English 🇺🇸 & Khmer 🇰🇭 language support |
-| 💾 Database | Full SQLite history: users, conversations, bookings, ratings |
+| 💾 Database | Full SQLite history: users, bookings, admin_notification, |
 | 🏠 Menu Navigation | Rich inline keyboards for all resort info sections |
 
 
