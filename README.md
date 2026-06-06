@@ -49,7 +49,7 @@ python main.py
 ## 📁 Project Structure
 
 ```
-Booking_bot/
+Smart-Resort-Bot/
 ├── main.py                    # 🚀 Entry point — run this
 ├── config.py                  # ⚙️  Environment & config loader
 ├── .env                       # 🔑 Your secret keys (edit this!)
@@ -59,16 +59,22 @@ Booking_bot/
 ├── data/
 │   └── resort_data.json       # 🏨 All resort info (customize this!)
 │
-└── bot/
+└── src/
+    ├── __init__.py            # 📦 Package initializer
     ├── handlers/
     │   ├── start_handler.py   # 👋 /start & /help commands
     │   ├── customer_handler.py# 💬 menu navigation
     │   ├── booking_handler.py # 📋 6-step booking flow
     │   └── admin_handler.py   # 👨‍💼 Staff admin panel
     ├── services/
-    │   └── database.py        # 💾 SQLite async database
-    └── keyboards/
-        └── menus.py           # ⌨️  All Telegram inline keyboards
+    │   ├── database.py        # 💾 SQLite async database
+    │   ├── sheets_service.py  # 📊 Google Sheets API service
+    │   └── gspread_workflow.py# 🔄 Google Sheets workflow manager
+    ├── keyboards/
+    │   ├── menus.py           # ⌨️  All Telegram inline keyboards
+    │   └── calendar.py        # 📅 Inline Calendar component
+    └── model/
+        └── schema.sql         # 🗃️ Database schema SQL
 ```
 
 ---

@@ -91,7 +91,7 @@ def back_to_menu_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data="menu_back")]])
 
 def start_again_keyboard(lang: str = "EN") -> InlineKeyboardMarkup:
-    label = "🔁 ចាប់ផ្តើមម្តងទៀត" if lang == "KH" else "🔁 Start Again"
+    label = "🔄 ចាប់ផ្តើមឡើងវិញ" if lang == "KH" else "🔄 Start Again"
     return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data="menu_back")]])
 def booking_room_availability_keyboard(rooms_with_status: list, lang: str = "EN") -> InlineKeyboardMarkup:
     """Shows one room per row with language-specific labels and availability."""

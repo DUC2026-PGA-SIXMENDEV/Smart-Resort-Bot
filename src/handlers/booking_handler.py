@@ -8,10 +8,10 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKe
 from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ParseMode
 
-from bot.services.database import Database
-from bot.services.sheets_service import SheetsService
-from bot.keyboards.calendar import create_calendar
-from bot.keyboards.menus import (
+from src.services.database import Database
+from src.services.sheets_service import SheetsService
+from src.keyboards.calendar import create_calendar
+from src.keyboards.menus import (
     booking_room_availability_keyboard, 
     booking_special_keyboard,
     booking_confirm_keyboard,
@@ -288,18 +288,14 @@ class BookingHandler:
 
             context.user_data["booking_data"]["booking_checkout"] = date_str
 
-            # If room is already selected (from the Room ID flow), auto-fill name and go straight to phone
+            # If room is already selected (from the new Room ID flow), skip selection
             if context.user_data["booking_data"].get("booking_room"):
                 try: await query.message.delete()
                 except: pass
-                tg_user = query.from_user
-                auto_name = (tg_user.full_name or tg_user.username or "Guest").strip()
-                context.user_data["booking_data"]["booking_name"] = auto_name
-
-                msg = self._get_status_header(context) + ("📞 <b>សូមបញ្ចូលលេខទូរស័ព្ទរបស់អ្នក:</b>" if lang == "KH" else "📞 <b>Please enter your phone number:</b>")
+                msg = self._get_status_header(context) + ("👤 <b>សូមបញ្ចូលឈ្មោះរបស់អ្នក:</b>" if lang == "KH" else "👤 <b>Please enter your full name:</b>")
                 sent_msg = await query.message.reply_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_cancel_reply_keyboard(lang))
                 context.user_data["last_bot_msg_id"] = sent_msg.message_id
-                return PHONE
+                return NAME
 
             # Show loading message first
             loading_msg = "⏳ <b>កំពុងគណនាបន្ទប់ទំនេរ... សូមរង់ចាំមួយភ្លែត</b>" if lang == "KH" else "⏳ <b>Calculating room availability... Please wait a moment</b>"
@@ -568,7 +564,7 @@ class BookingHandler:
             return await self.cancel(update, context)
 
         if data == "booking_edit_menu":
-            from bot.keyboards.menus import booking_edit_menu_keyboard
+            from src.keyboards.menus import booking_edit_menu_keyboard
             msg = "✏️ <b>តើអ្នកចង់កែប្រែអ្វី?</b>" if lang == "KH" else "✏️ <b>What would you like to edit?</b>"
             await query.edit_message_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_edit_menu_keyboard(lang))
             return CONFIRM
@@ -610,7 +606,7 @@ class BookingHandler:
                 r_copy["is_available"] = remains > 0
                 available_rooms.append(r_copy)
 
-            from bot.keyboards.menus import booking_room_availability_keyboard
+            from src.keyboards.menus import booking_room_availability_keyboard
             msg = "🛌 <b>សូមជ្រើសរើសប្រភេទបន្ទប់ថ្មី:</b>" if lang == "KH" else "🛌 <b>Please select new room type:</b>"
             await query.edit_message_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_room_availability_keyboard(available_rooms, lang))
             return ROOM_TYPE
@@ -622,7 +618,7 @@ class BookingHandler:
             return GUESTS
         
         if data == "edit_special":
-            from bot.keyboards.menus import booking_special_keyboard
+            from src.keyboards.menus import booking_special_keyboard
             msg = "📝 <b>តើលោកអ្នកមានសំណូមពរពិសេសអ្វីខ្លះ?</b>" if lang == "KH" else "📝 <b>Any special requests?</b>"
             await query.edit_message_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_special_keyboard(lang))
             return SPECIAL
@@ -693,7 +689,7 @@ class BookingHandler:
         """Helper to show summary and return CONFIRM state."""
         lang = context.user_data.get("lang", "EN")
         text = self._get_summary_text(context.user_data["booking_data"], lang)
-        from bot.keyboards.menus import booking_confirm_keyboard
+        from src.keyboards.menus import booking_confirm_keyboard
         
         # Delete previous bot prompt if it exists to keep chat clean
         last_msg_id = context.user_data.get("last_bot_msg_id")

@@ -42,37 +42,40 @@ class GspreadSheetsManager:
             return False
 
         try:
-            # Try exact match first, if not found, strip the emoji
-            try:
-                cell = self.rooms_sheet.find(room_type, in_column=1)
-            except Exception:
-                cell = None
+            rows = self.rooms_sheet.get_all_values()
+            headers = [str(h).strip().lower() for h in rows[0]]
+            
+            # Find indices
+            name_idx = None
+            avail_idx = None
+            for i, h in enumerate(headers):
+                if "room type" in h or "room name" in h:
+                    name_idx = i
+                if "available" in h or "avail" in h:
+                    avail_idx = i
+            
+            if name_idx is None or avail_idx is None:
+                name_idx = 0
+                avail_idx = 2
                 
-            if cell is None:
-                clean_room = self._clean_room_name(room_type)
-                try:
-                    cell = self.rooms_sheet.find(clean_room, in_column=1)
-                except Exception:
-                    cell = None
-                    
-            if cell is None:
-                print(f"❌ Room type '{room_type}' not found in Rooms sheet.")
-                return False
-            
-            # Get current available count from Column C (index 3)
-            try:
-                val = self.rooms_sheet.cell(cell.row, 3).value
-                current_available = int(val) if val else 0
-            except ValueError:
-                current_available = 0
-            
-            # Prevent available going below 0 (Fixes the -1 bug)
-            if current_available > 0:
-                self.rooms_sheet.update_cell(cell.row, 3, current_available - 1)
-                return True
-            else:
-                print(f"⚠️ Room type '{room_type}' is already at 0 availability.")
-                return False
+            clean_target = self._clean_room_name(room_type)
+            for i, row in enumerate(rows[1:], start=2):
+                if len(row) > max(name_idx, avail_idx):
+                    row_room = str(row[name_idx]).strip()
+                    clean_row_room = self._clean_room_name(row_room)
+                    if row_room == room_type or clean_row_room == clean_target:
+                        try:
+                            current_available = int(str(row[avail_idx]).strip() or 0)
+                            if current_available > 0:
+                                self.rooms_sheet.update_cell(i, avail_idx + 1, current_available - 1)
+                                return True
+                            else:
+                                print(f"⚠️ Room type '{room_type}' is already at 0 availability.")
+                                return False
+                        except ValueError:
+                            pass
+            print(f"❌ Room type '{room_type}' not found in Rooms sheet.")
+            return False
         except Exception as e:
             print(f"❌ Error deducting inventory: {e}")
             return False
@@ -98,45 +101,46 @@ class GspreadSheetsManager:
 
         # b) Look up Room Type in "Rooms" and restore availability
         try:
-            try:
-                room_cell = self.rooms_sheet.find(room_type, in_column=1)
-            except Exception:
-                room_cell = None
-                
-            if room_cell is None:
-                clean_room = self._clean_room_name(room_type)
-                try:
-                    room_cell = self.rooms_sheet.find(clean_room, in_column=1)
-                except Exception:
-                    room_cell = None
-                    
-            if room_cell is None:
-                print(f"❌ Room type '{room_type}' not found in Rooms sheet.")
-                return False
-                
-            # Get current available count from Column C (index 3)
-            try:
-                c_val = self.rooms_sheet.cell(room_cell.row, 3).value
-                current_available = int(c_val) if c_val else 0
-            except ValueError:
-                current_available = 0
-                
-            # Get total inventory from Column B (index 2) to ensure we don't go over max capacity
-            try:
-                t_val = self.rooms_sheet.cell(room_cell.row, 2).value
-                total_inventory = int(t_val) if t_val else 0
-            except ValueError:
-                total_inventory = 0
+            rows = self.rooms_sheet.get_all_values()
+            headers = [str(h).strip().lower() for h in rows[0]]
             
-            # Ensure we restore inventory even if total_inventory is empty (0)
-            if total_inventory <= 0 or current_available < total_inventory:
-                # Update dynamically at the found row (Raw Integer Update)
-                self.rooms_sheet.update_cell(room_cell.row, 3, current_available + 1)
+            # Find indices
+            name_idx = None
+            avail_idx = None
+            total_idx = None
+            for i, h in enumerate(headers):
+                if "room type" in h or "room name" in h:
+                    name_idx = i
+                if "available" in h or "avail" in h:
+                    avail_idx = i
+                if "total" in h:
+                    total_idx = i
+            
+            if name_idx is None or avail_idx is None:
+                name_idx = 0
+                avail_idx = 2
+            if total_idx is None:
+                total_idx = 1
+                
+            clean_target = self._clean_room_name(room_type)
+            for i, row in enumerate(rows[1:], start=2):
+                if len(row) > max(name_idx, avail_idx):
+                    row_room = str(row[name_idx]).strip()
+                    clean_row_room = self._clean_room_name(row_room)
+                    if row_room == room_type or clean_row_room == clean_target:
+                        try:
+                            current_available = int(str(row[avail_idx]).strip() or 0)
+                            total_inventory = int(str(row[total_idx]).strip() or 0) if len(row) > total_idx else 0
+                            
+                            if total_inventory <= 0 or current_available < total_inventory:
+                                self.rooms_sheet.update_cell(i, avail_idx + 1, current_available + 1)
+                                return True
+                        except ValueError:
+                            pass
+            return False
         except Exception as e:
             print(f"❌ Error restoring room inventory: {e}")
             return False
-            
-        return True
 
 
 # --- TELEGRAM BOT HANDLER LOGIC ---
@@ -195,6 +199,7 @@ async def handle_admin_checkout_callback(update: Update, context: ContextTypes.D
                 try:
                     b_id_int = int(booking_id)
                     await db.update_booking_status(b_id_int, "CHECKED OUT", "Processed via Admin Panel")
+                    await db.refresh_availability_now()
                     
                     # --- Notify Customer of Check-out ---
                     booking = await db.get_booking(b_id_int)

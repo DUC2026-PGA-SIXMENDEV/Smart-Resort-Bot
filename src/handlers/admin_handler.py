@@ -1,10 +1,11 @@
-﻿import logging
+import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
-from bot.services.database import Database
-from bot.services.sheets_service import SheetsService
-from bot.services.gspread_workflow import notify_admin_of_booking
+from src.services.database import Database
+from src.services.sheets_service import SheetsService
+from src.services.gspread_workflow import notify_admin_of_booking
+from src.keyboards.menus import start_again_keyboard
 
 logger = logging.getLogger(__name__)
 
@@ -181,18 +182,37 @@ class AdminHandler:
             if success:
                 await self.db.update_booking_status(booking_id, "CONFIRMED", "Approved via Admin Panel")
                 await self.sheets.update_booking_status(booking_id, "CONFIRMED")
+                await self.db.refresh_availability_now()
                 await query.answer(f"✅ Booking #{booking_id} Approved!", show_alert=True)
 
                 # --- Notify Customer of Approval ---
                 user = await self.db.get_user(user_id)
                 lang = user.get("language", "EN") if user else "EN"
-                msg = (
-                    f"🎉 <b>ការកក់របស់អ្នកត្រូវបានបញ្ជាក់!</b>\n\nសូមអរគុណសម្រាប់ការកក់បន្ទប់ <b>{room_type}</b>។ យើងខ្ញុំទន្ទឹងរង់ចាំការមកដល់របស់លោកអ្នក។"
-                    if lang == "KH" else
-                    f"🎉 <b>Your booking is confirmed!</b>\n\nThank you for booking the <b>{room_type}</b>. We look forward to welcoming you."
-                )
+                if lang == "KH":
+                    msg = (
+                        "🎉 <b>ការកក់របស់អ្នកទទួលបានជោគជ័យ!</b>\n\n"
+                        "សូមអរគុណសម្រាប់ការគាំទ្រ Paradise Resort យើងទន្ទឹងរង់ចាំទទួលស្វាគមន៍អ្នក! 🌴\n\n"
+                        f"👤 ឈ្មោះ: {booking['guest_name']}\n"
+                        f"🛏️ បន្ទប់: {booking['room_type']}\n"
+                        f"📅 ថ្ងៃចូល: {booking['checkin_date']}\n"
+                        f"📅 ថ្ងៃចេញ: {booking['checkout_date']}"
+                    )
+                else:
+                    msg = (
+                        "🎉 <b>Your Booking is Success!</b>\n\n"
+                        "Thank you for support Paradise Resort, We look forward to welcoming you! 🌴\n\n"
+                        f"👤 Name: {booking['guest_name']}\n"
+                        f"🛏️ Room: {booking['room_type']}\n"
+                        f"📅 Check-in: {booking['checkin_date']}\n"
+                        f"📅 Check-out: {booking['checkout_date']}"
+                    )
                 try:
-                    await context.bot.send_message(chat_id=user_id, text=msg, parse_mode="HTML")
+                    await context.bot.send_message(
+                        chat_id=user_id,
+                        text=msg,
+                        parse_mode="HTML",
+                        reply_markup=start_again_keyboard(lang)
+                    )
                 except Exception as e:
                     logger.error(f"Failed to send approval confirmation to user {user_id}: {e}")
                 

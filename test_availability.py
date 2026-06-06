@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from config import Config
-from bot.services.sheets_service import SheetsService
+from src.services.sheets_service import SheetsService
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 

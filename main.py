@@ -1,4 +1,4 @@
-﻿import json
+import json
 import logging
 import sys
 import io
@@ -25,16 +25,16 @@ from telegram.ext import (
 )
 
 from config import Config
-from bot.services.database import Database
-from bot.services.sheets_service import SheetsService
-from bot.handlers.start_handler import StartHandler
-from bot.handlers.customer_handler import CustomerHandler
-from bot.handlers.booking_handler import (
+from src.services.database import Database
+from src.services.sheets_service import SheetsService
+from src.handlers.start_handler import StartHandler
+from src.handlers.customer_handler import CustomerHandler
+from src.handlers.booking_handler import (
     BookingHandler,
     NAME, PHONE, CHECKIN, CHECKOUT, ROOM_TYPE, GUESTS, SPECIAL, CONFIRM, ROOM_ID_INPUT,
 )
-from bot.handlers.admin_handler import AdminHandler
-from bot.services.gspread_workflow import GspreadSheetsManager, handle_admin_checkout_callback
+from src.handlers.admin_handler import AdminHandler
+from src.services.gspread_workflow import GspreadSheetsManager, handle_admin_checkout_callback
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)-8s | %(name)s: %(message)s",
