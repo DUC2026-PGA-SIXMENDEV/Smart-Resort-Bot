@@ -8,10 +8,10 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKe
 from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ParseMode
 
-from bot.services.database import Database
-from bot.services.sheets_service import SheetsService
-from bot.keyboards.calendar import create_calendar
-from bot.keyboards.menus import (
+from src.services.database import Database
+from src.services.sheets_service import SheetsService
+from src.keyboards.calendar import create_calendar
+from src.keyboards.menus import (
     booking_room_availability_keyboard, 
     booking_special_keyboard,
     booking_confirm_keyboard,

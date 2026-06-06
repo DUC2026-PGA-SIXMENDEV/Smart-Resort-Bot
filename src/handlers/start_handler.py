@@ -6,8 +6,8 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
-from bot.services.database import Database
-from bot.keyboards.menus import (
+from src.services.database import Database
+from src.keyboards.menus import (
     language_start_keyboard,
     main_menu_keyboard
 )

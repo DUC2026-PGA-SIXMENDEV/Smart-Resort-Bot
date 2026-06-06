@@ -2,9 +2,9 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
-from bot.services.database import Database
-from bot.services.sheets_service import SheetsService
-from bot.services.gspread_workflow import notify_admin_of_booking
+from src.services.database import Database
+from src.services.sheets_service import SheetsService
+from src.services.gspread_workflow import notify_admin_of_booking
 
 logger = logging.getLogger(__name__)
 

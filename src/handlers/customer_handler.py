@@ -6,9 +6,9 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
-from bot.services.database import Database
-from bot.keyboards.calendar import create_calendar
-from bot.keyboards.menus import (
+from src.services.database import Database
+from src.keyboards.calendar import create_calendar
+from src.keyboards.menus import (
     rooms_menu_keyboard,
     room_detail_keyboard,
     back_to_menu_keyboard,

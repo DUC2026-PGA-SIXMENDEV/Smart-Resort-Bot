@@ -22,31 +22,40 @@
   "rooms": [
     {
       "id": "superior",
-      "name": "Superior Villa",
+      "name": "Single Bed Room",
       "price_per_night": 45,
       "capacity": 2,
       "size_sqm": 45,
       "bed_type": "គ្រែធំ (King Size Bed)",
-      "emoji": "🏠",
+      "emoji": "🛏️",
       "description_kh": "វិឡាលំដាប់ខ្ពស់ ជាមួយទេសភាពសួនច្បារ និងគ្រឿងសង្ហារឹមទំនើប។",
       "description_en": "Superior Villa with garden view and modern furnishings.",
-      "amenities": ["Wi-Fi ល្បឿនលឿន", "ម៉ាស៊ីនត្រជាក់", "ទូរទស្សន៍ឆ្លាតវៃ"]
+      "amenities": [
+        "Wi-Fi ល្បឿនលឿន",
+        "ម៉ាស៊ីនត្រជាក់",
+        "ទូរទស្សន៍ឆ្លាតវៃ"
+      ]
     },
     {
       "id": "deluxe",
-      "name": "Deluxe Suite",
+      "name": "Twin Room",
       "price_per_night": 65,
       "capacity": 2,
       "size_sqm": 55,
       "bed_type": "គ្រែធំពិសេស (Premium King Bed)",
-      "emoji": "🛁",
+      "emoji": "🛏️🛏️",
       "description_kh": "បន្ទប់ប្រណិត ជាមួយអាងងូតទឹក និងយ៉រផ្ទាល់ខ្លួន។",
       "description_en": "Deluxe Suite with private balcony and bathtub.",
-      "amenities": ["Wi-Fi ល្បឿនលឿន", "ម៉ាស៊ីនត្រជាក់", "យ៉រផ្ទាល់ខ្លួន", "អាងងូតទឹក"]
+      "amenities": [
+        "Wi-Fi ល្បឿនលឿន",
+        "ម៉ាស៊ីនត្រជាក់",
+        "យ៉រផ្ទាល់ខ្លួន",
+        "អាងងូតទឹក"
+      ]
     },
     {
       "id": "family",
-      "name": "Family Bungalow",
+      "name": "Family Room",
       "price_per_night": 85,
       "capacity": 4,
       "size_sqm": 75,
@@ -54,24 +63,44 @@
       "emoji": "👨‍👩‍👧‍👦",
       "description_kh": "បឹងកាឡូគ្រួសារ ធំទូលាយសម្រាប់មនុស្ស ៤ នាក់។",
       "description_en": "Family Bungalow, spacious for 4 people.",
-      "amenities": ["Wi-Fi ល្បឿនលឿន", "ម៉ាស៊ីនត្រជាក់", "ទូរទស្សន៍ឆ្លាតវៃ", "ផ្ទះបាយតូច"]
+      "amenities": [
+        "Wi-Fi ល្បឿនលឿន",
+        "ម៉ាស៊ីនត្រជាក់",
+        "ទូរទស្សន៍ឆ្លាតវៃ",
+        "ផ្ទះបាយតូច"
+      ]
     },
     {
       "id": "executive",
-      "name": "Executive Suite",
+      "name": "VIP Room / Deluxe",
       "price_per_night": 120,
       "capacity": 2,
       "size_sqm": 85,
       "bed_type": "គ្រែធំពិសេស (Super King Bed)",
-      "emoji": "🥂",
+      "emoji": "✨",
       "description_kh": "បន្ទប់សម្រាប់នាយកប្រតិបត្តិ ជាមួយសេវាកម្មពិសេសបំផុត។",
       "description_en": "Executive Suite with ultimate premium services.",
-      "amenities": ["Wi-Fi ល្បឿនលឿន", "ម៉ាស៊ីនត្រជាក់", "យ៉រផ្ទាល់ខ្លួន", "សេវាកម្មបន្ទប់ ២៤ ម៉ោង"]
+      "amenities": [
+        "Wi-Fi ល្បឿនលឿន",
+        "ម៉ាស៊ីនត្រជាក់",
+        "យ៉រផ្ទាល់ខ្លួន",
+        "សេវាកម្មបន្ទប់ ២៤ ម៉ោង"
+      ]
     }
   ],
   "facilities": {
-    "list_kh": ["អាងហែលទឹក (៧ព្រឹក - ៩យប់)", "ស្ប៉ា និងម៉ាស្សា", "ភោជនីយដ្ឋាន", "កន្លែងហាត់ប្រាណ"],
-    "list_en": ["Swimming Pool (7 AM - 9 PM)", "Spa & Massage", "Restaurant", "Fitness Center"]
+    "list_kh": [
+      "អាងហែលទឹក (៧ព្រឹក - ៩យប់)",
+      "ស្ប៉ា និងម៉ាស្សា",
+      "ភោជនីយដ្ឋាន",
+      "កន្លែងហាត់ប្រាណ"
+    ],
+    "list_en": [
+      "Swimming Pool (7 AM - 9 PM)",
+      "Spa & Massage",
+      "Restaurant",
+      "Fitness Center"
+    ]
   },
   "location": {
     "address_kh": "ផ្លូវជាតិលេខ ៦, ក្រុងសៀមរាប, ប្រទេសកម្ពុជា",
@@ -80,7 +109,7 @@
   "contact": {
     "phone": "+855 12 345 678",
     "email": "info@paradiseresort.com.kh",
-    "website": "www.paradiseresort.com.kh"
+    "website": "https://paradize-resort.netlify.app/"
   },
   "policies": {
     "check_in": "១៤:០០ (2:00 PM)",
