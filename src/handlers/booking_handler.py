@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Conversation States
 NAME, PHONE, CHECKIN, CHECKOUT, ROOM_TYPE, GUESTS, SPECIAL, CONFIRM, ROOM_ID_INPUT = range(9)
 DATE_FORMAT = "%d/%m/%Y"
+PHONE_NUMBER_LENGTH = 10
 
 class BookingHandler:
     def __init__(self, db: Database, admin_ids: list[int], sheets: SheetsService):
@@ -182,19 +183,26 @@ class BookingHandler:
         translation_table = str.maketrans(khmer_digits, english_digits)
         translated_phone = phone.translate(translation_table)
 
-        # Phone Validation Check (strictly digits, no symbols or spaces, length >= 6)
-        if not (translated_phone.isdigit() and len(translated_phone) >= 6):
+        # Phone Validation Check (strictly 10 digits, no symbols or spaces)
+        if not (translated_phone.isdigit() and len(translated_phone) == PHONE_NUMBER_LENGTH):
             # Delete previous bot prompt if invalid
             last_msg_id = context.user_data.get("last_bot_msg_id")
             if last_msg_id:
                 try: await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=last_msg_id)
                 except: pass
                 
-            msg = self._get_status_header(context) + (
-                "❌ <b>លេខទូរស័ព្ទមិនត្រឹមត្រូវទេ!</b> សូមបញ្ចូលតែលេខគត់សុទ្ធ គ្មាននិមិត្តសញ្ញា ឬដកឃ្លាឡើយ (ឧទាហរណ៍៖ 012345678 ឬ ០១២៣៤៥៦៧៨)៖"
-                if lang == "KH" else
-                "❌ <b>Invalid phone number!</b> Please enter only digits without any symbols or spaces (e.g., 012345678 or ០១២៣៤៥៦៧៨):"
-            )
+            if lang == "KH":
+                msg = self._get_status_header(context) + (
+                    "❌ <b>លេខទូរស័ព្ទមិនត្រឹមត្រូវ!</b> "
+                    f"សូមបញ្ចូលលេខ {PHONE_NUMBER_LENGTH} ខ្ទង់ "
+                    "ដោយគ្មានសញ្ញា ឬដកឃ្លា (ឧ. 0123456789):"
+                )
+            else:
+                msg = self._get_status_header(context) + (
+                    "<b>Invalid phone number!</b> Please enter exactly "
+                    f"{PHONE_NUMBER_LENGTH} digits without any symbols or spaces "
+                    "(e.g., 0123456789):"
+                )
             sent_msg = await update.message.reply_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_cancel_reply_keyboard(lang))
             context.user_data["last_bot_msg_id"] = sent_msg.message_id
             return PHONE

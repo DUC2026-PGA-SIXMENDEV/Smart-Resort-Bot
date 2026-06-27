@@ -13,6 +13,7 @@ CREATE TABLE bookings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     guest_name TEXT NOT NULL,
+    guest_phone TEXT NOT NULL CHECK (guest_phone GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
     checkin DATE NOT NULL,
     checkout DATE NOT NULL,
     room_type TEXT NOT NULL,
