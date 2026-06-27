@@ -182,8 +182,46 @@ class BookingHandler:
         translation_table = str.maketrans(khmer_digits, english_digits)
         translated_phone = phone.translate(translation_table)
 
-        # Phone Validation Check (strictly digits, no symbols or spaces, length >= 6)
-        if not (translated_phone.isdigit() and len(translated_phone) >= 6):
+        # Remove spaces, hyphens, and parentheses for validation/storage
+        sanitized_phone = (
+            translated_phone.replace(" ", "")
+            .replace("-", "")
+            .replace("(", "")
+            .replace(")", "")
+        )
+
+        # Normalize country code prefix to standard local leading '0'
+        if sanitized_phone.startswith("+855"):
+            sanitized_phone = "0" + sanitized_phone[4:]
+        elif sanitized_phone.startswith("855") and len(sanitized_phone) > 8:
+            sanitized_phone = "0" + sanitized_phone[3:]
+        # Prepend '0' if user omitted it but typed a valid 8-9 digit number
+        elif (not sanitized_phone.startswith("0") and 
+              sanitized_phone.isdigit() and 
+              len(sanitized_phone) in [8, 9]):
+            sanitized_phone = "0" + sanitized_phone
+
+        # Phone Validation Check based on Cambodian carrier guidelines
+        is_valid = False
+        if sanitized_phone.isdigit() and sanitized_phone.startswith("0"):
+            prefix = sanitized_phone[:3]
+            mefone_prefixes = ["031", "060", "066", "067", "068", "071", "088", "090", "097"]
+            cellcard_smart_prefixes = [
+                # Smart
+                "010", "015", "016", "069", "070", "081", "086", "087", "093", "096", "098",
+                # Cellcard
+                "011", "012", "014", "017", "061", "076", "077", "078", "079", "085", "089", "092", "095", "099"
+            ]
+            
+            if prefix in mefone_prefixes:
+                is_valid = (len(sanitized_phone) == 10)
+            elif prefix in cellcard_smart_prefixes:
+                is_valid = (len(sanitized_phone) == 9)
+            else:
+                # Default fallback for other landline/unknown prefixes starting with 0
+                is_valid = (len(sanitized_phone) in [9, 10])
+
+        if not is_valid:
             # Delete previous bot prompt if invalid
             last_msg_id = context.user_data.get("last_bot_msg_id")
             if last_msg_id:
@@ -191,9 +229,15 @@ class BookingHandler:
                 except: pass
                 
             msg = self._get_status_header(context) + (
-                "❌ <b>លេខទូរស័ព្ទមិនត្រឹមត្រូវទេ!</b> សូមបញ្ចូលតែលេខគត់សុទ្ធ គ្មាននិមិត្តសញ្ញា ឬដកឃ្លាឡើយ (ឧទាហរណ៍៖ 012345678 ឬ ០១២៣៤៥៦៧៨)៖"
+                "❌ <b>លេខទូរស័ព្ទមិនត្រឹមត្រូវទេ!</b> សូមបញ្ចូលលេខទូរស័ព្ទឱ្យបានត្រឹមត្រូវ៖\n"
+                "- សម្រាប់ប្រព័ន្ធ Metfone (031, 060, 066, 067, 068, 071, 088, 090, 097) ត្រូវមាន ១០ ខ្ទង់\n"
+                "- សម្រាប់ប្រព័ន្ធ Smart (010, 015, 016, 069, 070, 081, 086, 087, 093, 096, 098) ត្រូវមាន ៩ ខ្ទង់\n"
+                "- សម្រាប់ប្រព័ន្ធ Cellcard (011, 012, 014, 017, 061, 076, 077, 078, 079, 085, 089, 092, 095, 099) ត្រូវមាន ៩ ខ្ទង់"
                 if lang == "KH" else
-                "❌ <b>Invalid phone number!</b> Please enter only digits without any symbols or spaces (e.g., 012345678 or ០១២៣៤៥៦៧៨):"
+                "❌ <b>Invalid phone number!</b> Please enter a valid phone number:\n"
+                "- Metfone (031, 060, 066, 067, 068, 071, 088, 090, 097) must be exactly 10 digits\n"
+                "- Smart (010, 015, 016, 069, 070, 081, 086, 087, 093, 096, 098) must be exactly 9 digits\n"
+                "- Cellcard (011, 012, 014, 017, 061, 076, 077, 078, 079, 085, 089, 092, 095, 099) must be exactly 9 digits"
             )
             sent_msg = await update.message.reply_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_cancel_reply_keyboard(lang))
             context.user_data["last_bot_msg_id"] = sent_msg.message_id
@@ -206,7 +250,7 @@ class BookingHandler:
             except: pass
             context.user_data["last_bot_msg_id"] = None
 
-        context.user_data["booking_data"]["booking_phone"] = translated_phone
+        context.user_data["booking_data"]["booking_phone"] = sanitized_phone
         
         if context.user_data.get("is_editing"):
             context.user_data["is_editing"] = False
