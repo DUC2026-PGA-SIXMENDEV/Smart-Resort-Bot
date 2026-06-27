@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 # Conversation States
 NAME, PHONE, CHECKIN, CHECKOUT, ROOM_TYPE, GUESTS, SPECIAL, CONFIRM, ROOM_ID_INPUT = range(9)
 DATE_FORMAT = "%d/%m/%Y"
-PHONE_NUMBER_LENGTH = 10
+MIN_PHONE_NUMBER_LENGTH = 9
+MAX_PHONE_NUMBER_LENGTH = 10
 
 class BookingHandler:
     def __init__(self, db: Database, admin_ids: list[int], sheets: SheetsService):
@@ -183,8 +184,11 @@ class BookingHandler:
         translation_table = str.maketrans(khmer_digits, english_digits)
         translated_phone = phone.translate(translation_table)
 
-        # Phone Validation Check (strictly 10 digits, no symbols or spaces)
-        if not (translated_phone.isdigit() and len(translated_phone) == PHONE_NUMBER_LENGTH):
+        # Phone Validation Check (strictly 9 or 10 digits, no symbols or spaces)
+        if not (
+            translated_phone.isdigit()
+            and MIN_PHONE_NUMBER_LENGTH <= len(translated_phone) <= MAX_PHONE_NUMBER_LENGTH
+        ):
             # Delete previous bot prompt if invalid
             last_msg_id = context.user_data.get("last_bot_msg_id")
             if last_msg_id:
@@ -194,14 +198,13 @@ class BookingHandler:
             if lang == "KH":
                 msg = self._get_status_header(context) + (
                     "❌ <b>លេខទូរស័ព្ទមិនត្រឹមត្រូវ!</b> "
-                    f"សូមបញ្ចូលលេខ {PHONE_NUMBER_LENGTH} ខ្ទង់ "
+                    f"សូមបញ្ចូលលេខ {MIN_PHONE_NUMBER_LENGTH} ឬ {MAX_PHONE_NUMBER_LENGTH} ខ្ទង់ "
                     "ដោយគ្មានសញ្ញា ឬដកឃ្លា (ឧ. 0123456789):"
                 )
             else:
                 msg = self._get_status_header(context) + (
-                    "<b>Invalid phone number!</b> Please enter exactly "
-                    f"{PHONE_NUMBER_LENGTH} digits without any symbols or spaces "
-                    "(e.g., 0123456789):"
+                    "<b>Invalid phone number!</b> Please enter 9 or 10 digits "
+                    "without any symbols or spaces (e.g., 012345678 or 0123456789):"
                 )
             sent_msg = await update.message.reply_text(msg, parse_mode=ParseMode.HTML, reply_markup=booking_cancel_reply_keyboard(lang))
             context.user_data["last_bot_msg_id"] = sent_msg.message_id

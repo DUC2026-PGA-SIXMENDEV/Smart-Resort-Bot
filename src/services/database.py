@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 # Timezone for Cambodia
 KH_TZ = pytz.timezone("Asia/Phnom_Penh")
-PHONE_NUMBER_LENGTH = 10
+MIN_PHONE_NUMBER_LENGTH = 9
+MAX_PHONE_NUMBER_LENGTH = 10
 
 
 def now_kh() -> str:
@@ -68,7 +69,10 @@ class Database:
                     id              INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id         INTEGER,
                     guest_name      TEXT,
-                    guest_phone     TEXT CHECK (guest_phone GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
+                    guest_phone     TEXT CHECK (
+                        guest_phone GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+                        OR guest_phone GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+                    ),
                     checkin_date    TEXT,
                     checkout_date   TEXT,
                     room_type       TEXT,
@@ -332,8 +336,13 @@ class Database:
         special_request: str,
     ) -> int:
         """Creates a new booking and returns its ID."""
-        if not (guest_phone.isdigit() and len(guest_phone) == PHONE_NUMBER_LENGTH):
-            raise ValueError(f"guest_phone must be exactly {PHONE_NUMBER_LENGTH} digits")
+        if not (
+            guest_phone.isdigit()
+            and MIN_PHONE_NUMBER_LENGTH <= len(guest_phone) <= MAX_PHONE_NUMBER_LENGTH
+        ):
+            raise ValueError(
+                f"guest_phone must be {MIN_PHONE_NUMBER_LENGTH} or {MAX_PHONE_NUMBER_LENGTH} digits"
+            )
 
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute("""
