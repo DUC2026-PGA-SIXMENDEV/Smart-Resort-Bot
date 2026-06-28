@@ -190,9 +190,42 @@ class SheetsService:
                 if not self._connect(): return
             
             def do_update():
-                cell = self.sheet.find(str(booking_id), in_column=1)
-                if cell:
-                    self.sheet.update_cell(cell.row, 2, new_status)
+                rows = self.sheet.get_all_values()
+                target_id = str(booking_id).strip()
+                matches = []
+
+                for row_number, row in enumerate(rows[1:], start=2):
+                    if row and str(row[0]).strip() == target_id:
+                        status = str(row[1]).strip().upper() if len(row) > 1 else ""
+                        matches.append((row_number, status))
+
+                if not matches:
+                    logger.warning("Booking ID %s not found in Sheets.", booking_id)
+                    return
+
+                preferred_statuses = {
+                    "CONFIRMED": {"PENDING"},
+                    "DECLINED": {"PENDING"},
+                    "CHECKED OUT": {"CONFIRMED", "PAID"},
+                }.get(new_status, set())
+
+                row_to_update = None
+                if preferred_statuses:
+                    for row_number, status in reversed(matches):
+                        if status in preferred_statuses:
+                            row_to_update = row_number
+                            break
+
+                if row_to_update is None:
+                    row_to_update = matches[-1][0]
+
+                self.sheet.update_cell(row_to_update, 2, new_status)
+                logger.info(
+                    "Updated Sheets booking #%s row %s to %s.",
+                    booking_id,
+                    row_to_update,
+                    new_status,
+                )
             
             await asyncio.to_thread(do_update)
         except Exception as e:

@@ -87,13 +87,26 @@ class GspreadSheetsManager:
 
         # a) Look up Booking ID in "Sheet1" and update Status
         try:
-            booking_cell = None
-            try:
-                booking_cell = self.sheet1.find(str(booking_id), in_column=1)
-            except Exception:
-                pass
-            if booking_cell is not None:
-                self.sheet1.update_cell(booking_cell.row, 2, "CHECKED OUT")
+            rows = self.sheet1.get_all_values()
+            target_id = str(booking_id).strip()
+            matches = []
+
+            for row_number, row in enumerate(rows[1:], start=2):
+                if row and str(row[0]).strip() == target_id:
+                    status = str(row[1]).strip().upper() if len(row) > 1 else ""
+                    matches.append((row_number, status))
+
+            row_to_update = None
+            for row_number, status in reversed(matches):
+                if status in {"CONFIRMED", "PAID"}:
+                    row_to_update = row_number
+                    break
+
+            if row_to_update is None and matches:
+                row_to_update = matches[-1][0]
+
+            if row_to_update is not None:
+                self.sheet1.update_cell(row_to_update, 2, "CHECKED OUT")
             else:
                 print(f"⚠️ Booking ID '{booking_id}' not found in Sheet1. Still attempting to return room inventory...")
         except Exception as e:
